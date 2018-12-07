@@ -1,600 +1,544 @@
-﻿/**
- * WindowController class
+/**
+ * UniWinApi sample
  * 
- * Author: Kirurobo, http://twitter.com/kirurobo
- * Copyright: (c) 2014 Kirurobo
- * License: Unlicense
- * 
- * This is free and unencumbered software released into the public domain.
- * 
- * Anyone is free to copy, modify, publish, use, compile, sell, or
- * distribute this software, either in source code form or as a compiled
- * binary, for any purpose, commercial or non-commercial, and by any
- * means.
- * 
- * In jurisdictions that recognize copyright laws, the author or authors
- * of this software dedicate any and all copyright interest in the
- * software to the public domain. We make this dedication for the benefit
- * of the public at large and to the detriment of our heirs and
- * successors. We intend this dedication to be an overt act of
- * relinquishment in perpetuity of all present and future rights to this
- * software under copyright law.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- * 
- * For more information, please refer to <http://unlicense.org/>
+ * Author: Kirurobo http://twitter.com/kirurobo
+ * License: CC0 https://creativecommons.org/publicdomain/zero/1.0/
  */
 
+using System.Collections;
 using UnityEngine;
-using System;
-using System.Runtime.InteropServices;
-using System.Text;
 
-public class WindowController : IDisposable {
-	/// <summary>
-	/// このウィンドウのハンドル
-	/// </summary>
-	private IntPtr hWnd = IntPtr.Zero;
+/// <summary>
+/// Set editable the bool property
+/// </summary>
+[System.AttributeUsage(System.AttributeTargets.Field, Inherited = true, AllowMultiple = false)]
+public class BoolPropertyAttribute : PropertyAttribute {}
 
-	/// <summary>
-	/// ウィンドウ操作ができる状態ならtrueを返す
-	/// </summary>
-	/// <value><c>true</c> if this instance is active; otherwise, <c>false</c>.</value>
-	public bool IsActive { get{return hWnd != IntPtr.Zero;} }
+/// <summary>
+/// Set the attribute as readonly
+/// </summary>
+[System.AttributeUsage(System.AttributeTargets.Field, Inherited = true, AllowMultiple = false)]
+public class ReadOnlyAttribute : PropertyAttribute { }
 
-	/// <summary>
-	/// ウィンドウが最大化されていればtrue
-	/// </summary>
-	/// <value><c>true</c> if this instance is maximized; otherwise, <c>false</c>.</value>
-	public bool IsMaximized { get {return (IsActive && WinApi.IsZoomed(hWnd));}}
+
+/// <summary>
+/// デスクトップマスコット風の利用法を想定した UniWinApi サンプル。
+/// </summary>
+public class WindowController : MonoBehaviour {
 
 	/// <summary>
-	/// ウィンドウが最小化されていればtrue
+	/// Window controller
 	/// </summary>
-	/// <value><c>true</c> if this instance is minimized; otherwise, <c>false</c>.</value>
-	public bool IsMinimized { get {return (IsActive && WinApi.IsIconic(hWnd));}}
-	
-	/// <summary>
-	/// ウィンドウ透過時に最前面に表示するかどうか
-	/// </summary>
-	public bool TopmostWhenTransparent = false;
-
-    /// <summary>
-    /// ウィンドウ位置
-    /// </summary>
-    public Vector2 NormalWindowPosition;
+	public UniWinApi uniWin;
 
 	/// <summary>
-	/// 標準ウィンドウサイズの指定
+	/// 操作を透過する状態か
 	/// </summary>
-	public Vector2 NormalWindowSize; 
-
-	/// <summary>
-	/// 標準ウィンドウクライアント領域のみのサイズ指定
-	/// </summary>
-	private Vector2 NormalClientSize;
-
-	/// <summary>
-	/// 元のウィンドウスタイル
-	/// </summary>
-	private long NormalWindowStyle;
-
-	/// <summary>
-	/// 現在のウィンドウスタイル
-	/// </summary>
-	private long CurrentWindowStyle;
-
-    /// <summary>
-    /// Original extended window style
-    /// </summary>
-    private long NormalWindowExStyle;
-
-    /// <summary>
-    /// Current extended window style
-    /// </summary>
-    private long CurrentWindowExStyle;
-
-    /// <summary>
-    /// 起動時のデスクトップコンポジション状態を記憶。終了時に戻すため
-    /// </summary>
-    private bool IsCompositionEnabled;
-
-
-	/// <summary>
-	/// ウィンドウ制御のコンストラクタ
-	/// </summary>
-	public WindowController() {
-//		//// ウィンドウハンドル取得
-//		////	現在アクティブな物と仮定。アクティブなのが替わってしまうと困る。
-//		//FindActiveWindow();
-//		
-		//// デスクトップコンポジションを有効化（Unityだと強制終了する模様）
-		//IsCompositionEnabled = DwmApi.DwmIsCompositionEnabled();
-		//DwmApi.DwmEnableComposition (true);
+	public bool isClickThrough
+	{
+		get { return _isClickThrough; }
 	}
-
-	~WindowController() {
-        //// デスクトップコンポジションを起動時の状態に戻す
-        //DwmApi.DwmEnableComposition(IsCompositionEnabled);
-        Dispose();
-	}
+	private bool _isClickThrough = true;
 
 	/// <summary>
-	/// Stores the size and position of the window.
+	/// Is this window transparent
 	/// </summary>
-	private void StoreWindowSize() {
-		// 今の状態を記憶
-		if (IsActive && !WinApi.IsZoomed(hWnd) && !WinApi.IsIconic(hWnd)) {
-			// 
-			WinApi.RECT rect = new WinApi.RECT();
-			WinApi.RECT clientRect = new WinApi.RECT();
-			
-			// ウィンドウ位置とサイズ
-			WinApi.GetWindowRect(hWnd, out rect);
-			this.NormalWindowPosition = new Vector2(rect.left, rect.top);
-			this.NormalWindowSize = new Vector2(rect.right - rect.left, rect.bottom - rect.top);
-			
-			// クライアント領域のサイズ
-			WinApi.GetClientRect(hWnd, out clientRect);
-			this.NormalClientSize = new Vector2(clientRect.right, clientRect.bottom);
+	public bool isTransparent
+	{
+		get { return _isTransparent; }
+		set { SetTransparent(value); }
+	}
+	[SerializeField, BoolProperty, Tooltip("Check to set transparent on startup")]
+	private bool _isTransparent = false;
 
-			// ウィンドウスタイルを記憶
-			this.NormalWindowStyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_STYLE);
-            this.NormalWindowExStyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_EXSTYLE);
+	/// <summary>
+	/// Is this window minimized
+	/// </summary>
+	public bool isTopmost {
+		get { return ((uniWin != null) ? _isTopmost : _isTopmost = uniWin.IsTopmost); }
+		set { SetTopmost(value); }
+	}
+	[SerializeField, BoolProperty, Tooltip("Check to set topmost on startup")]
+	private bool _isTopmost = false;
+
+	/// <summary>
+	/// Is this window maximized
+	/// </summary>
+	public bool isMaximized {
+		get { return ((uniWin != null) ? _isMaximized : _isMaximized = uniWin.IsMaximized); }
+		set { SetMaximized(value); }
+	}
+	[SerializeField, BoolProperty, Tooltip("Check to set maximized on startup")]
+	private bool _isMaximized = false;
+
+	/// <summary>
+	/// Is this window minimized
+	/// </summary>
+	public bool isMinimized {
+		get { return ((uniWin != null) ? _isMinimized : _isMinimized = uniWin.IsMinimized); }
+		set { SetMinimized(value); }
+	}
+	[SerializeField, BoolProperty, Tooltip("Check to set minimized on startup")]
+	private bool _isMinimized = false;
+
+	/// <summary>
+	/// ファイルドロップを有効にするならば最初からtrueにしておく
+	/// </summary>
+	public bool enableFileDrop {
+		get { return _enableFileDrop; }
+		set {
+			if (value) { BeginFileDrop(); }
+			else { EndFileDrop(); }
 		}
 	}
+	[SerializeField, BoolProperty, Tooltip("Check to set enable file-drop on startup")]
+	private bool _enableFileDrop = false;
 
 	/// <summary>
-	/// Sets the window z-order (Topmost or not).
+	/// マウスドラッグでウィンドウを移動させるか
 	/// </summary>
-	/// <param name="isTop">If set to <c>true</c> is top.</param>
-	public void EnableTopmost(bool isTop)
-	{
-		if (!IsActive) return;
-		WinApi.SetWindowPos (
-			hWnd,
-			(isTop ? WinApi.HWND_TOPMOST : WinApi.HWND_NOTOPMOST),
-			0, 0, 0, 0,
-			WinApi.SWP_NOSIZE | WinApi.SWP_NOMOVE
-			| WinApi.SWP_FRAMECHANGED | WinApi.SWP_NOOWNERZORDER
-			| WinApi.SWP_NOACTIVATE | WinApi.SWP_ASYNCWINDOWPOS
-			);
-	}
+	public bool enableDragMove = true;
 
-    /// <summary>
-    /// Sets the window size.
-    /// </summary>
-    /// <param name="isTop">If set to <c>true</c> is top.</param>
-    /// <param name="size">Size.</param>
-    public void SetSize(Vector2 size)
-	{
-		if (!IsActive) return;
-		WinApi.SetWindowPos (
-			hWnd,
-			IntPtr.Zero,
-			0, 0, (int)size.x, (int)size.y,
-			WinApi.SWP_NOMOVE | WinApi.SWP_NOZORDER
-			| WinApi.SWP_FRAMECHANGED | WinApi.SWP_NOOWNERZORDER
-			| WinApi.SWP_NOACTIVATE | WinApi.SWP_ASYNCWINDOWPOS
-			);
-	}
+
+	// カメラの背景をアルファゼロの黒に置き換えるため、本来の背景を保存しておく変数
+	private CameraClearFlags originalCameraClearFlags;
+	private Color originalCameraBackground;
 
 	/// <summary>
-	/// Sets the window position.
+	/// Is the mouse pointer on an opaque pixel
 	/// </summary>
-	/// <param name="isTop">If set to <c>true</c> is top.</param>
-	/// <param name="position">Position.</param>
-	/// <param name="size">Size.</param>
-	public void SetPosition(Vector2 position)
-	{
-		if (!IsActive) return;
-		WinApi.SetWindowPos (
-			hWnd,
-			IntPtr.Zero,
-			(int)position.x, (int)position.y, 0, 0,
-			WinApi.SWP_NOSIZE | WinApi.SWP_NOZORDER
-			| WinApi.SWP_FRAMECHANGED | WinApi.SWP_NOOWNERZORDER
-			| WinApi.SWP_NOACTIVATE | WinApi.SWP_ASYNCWINDOWPOS
-			);
-	}
+	//[SerializeField, Tooltip("Is the mouse pointer on an opaque pixel? (Read only)")]
+	private bool onOpaquePixel = true;
 
 	/// <summary>
-	/// Gets the window size.
+	/// The cut off threshold of alpha value.
 	/// </summary>
-	/// <returns>The size.</returns>
-	public Vector2 GetSize()
+	private float opaqueThreshold = 0.1f;
+
+	/// <summary>
+	/// Pixel color under the mouse pointer. (Read only)
+	/// </summary>
+	[ReadOnly, Tooltip("Pixel color under the mouse pointer. (Read only)")]
+	public Color pickedColor;
+
+	private bool isDragging = false;
+	private Vector2 lastMousePosition;
+
+	/// <summary>
+	/// 現在対象としているウィンドウが自分自身らしいと確認できたらtrueとする
+	/// </summary>
+	private bool isWindowChecked = false;
+
+	/// <summary>
+	/// カメラのインスタンス
+	/// </summary>
+	private Camera currentCamera;
+
+
+	/// <summary>
+	/// ファイルドロップ時のイベントハンドラー。 UniWinApiの OnFilesDropped にそのまま渡す。
+	/// </summary>
+	public event UniWinApi.FilesDropped OnFilesDropped
 	{
-		if (!IsActive) return Vector2.zero;
-		WinApi.RECT rect = new WinApi.RECT();
-		WinApi.GetWindowRect(hWnd, out rect);
-		return new Vector2(rect.right - rect.left, rect.bottom - rect.top);
+		add { uniWin.OnFilesDropped += value; }
+		remove { uniWin.OnFilesDropped -= value; }
 	}
 
 	/// <summary>
-	/// Gets the window position.
+	/// ウィンドウ状態が変化したときに発生するイベント
 	/// </summary>
-	/// <returns>The position.</returns>
-	public Vector2 GetPosition()
-	{
-		if (!IsActive) return Vector2.zero;
-		WinApi.RECT rect = new WinApi.RECT();
-		WinApi.GetWindowRect(hWnd, out rect);
-		return new Vector2(rect.left, rect.top);
-	}
+	public event OnStateChangeDelegate OnStateChange;
+	public delegate void OnStateChangeDelegate();
 
 	/// <summary>
-	/// 現在のウィンドウスタイルを記憶
+	/// 表示されたテクスチャ
 	/// </summary>
-	private void MemorizeWindowState()
-	{
-		StoreWindowSize();
-		this.CurrentWindowStyle = this.NormalWindowStyle;
-        this.CurrentWindowExStyle = this.NormalWindowExStyle;
-    }
+	private Texture2D colorPickerTexture = null;
 
-    /// <summary>
-    /// アクティブウィンドウのハンドルを取得
-    /// </summary>
-    /// <returns><c>true</c>, if window handle was set, <c>false</c> otherwise.</returns>
-    public bool FindHandle()
-	{
-        RestoreWndProc();
-		hWnd = WinApi.GetActiveWindow();
-        InitWndProc();
-		MemorizeWindowState();
-		return IsActive;
-	}
 
-	/// <summary>
-	/// ウィンドウタイトルを元にハンドルを取得
-	/// </summary>
-	/// <returns><c>true</c>, if handle by title was found, <c>false</c> otherwise.</returns>
-	/// <param name="title">Title.</param>
-	public bool FindHandleByTitle(string title)
-	{
-        RestoreWndProc();
-		hWnd = WinApi.FindWindow(null, title);
-        InitWndProc();
-		MemorizeWindowState();
-		return IsActive;
-	}
-	
-	/// <summary>
-	/// ウィンドウクラスを元にハンドルを取得
-	/// </summary>
-	/// <returns><c>true</c>, if handle by title was found, <c>false</c> otherwise.</returns>
-	/// <param name="title">Title.</param>
-	public bool FindHandleByClass(string title)
-	{
-        RestoreWndProc();
-		hWnd = WinApi.FindWindow(title, null);
-        InitWndProc();
-		MemorizeWindowState();
-		return IsActive;
-	}
+	// Use this for initialization
+	void Awake () {
+		if (!currentCamera)
+		{
+			// メインカメラを探す
+			currentCamera = Camera.main;
 
-	/// <summary>
-	/// ウィンドウスタイルを監視して、替わっていれば戻す
-	/// </summary>
-	public void Update() {
-		if (!IsActive) return;
-		long style = WinApi.GetWindowLong(hWnd, WinApi.GWL_STYLE);
-        long exstyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_EXSTYLE);
-        if (!WinApi.IsIconic(hWnd) && !WinApi.IsZoomed(hWnd)) {
-			if (style != this.CurrentWindowStyle) {
-				WinApi.SetWindowLong (hWnd, WinApi.GWL_STYLE, this.CurrentWindowStyle);
-				WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
+			// もしメインカメラが見つからなければ、Findで探す
+			if (!currentCamera)
+			{
+				currentCamera = FindObjectOfType<Camera>();
 			}
-            if (exstyle != this.CurrentWindowExStyle)
-            {
-                WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
-                WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
-            }
-        }
-    }
-
-	/// <summary>
-	/// ウィンドウ透過をON/OFF
-	/// </summary>
-	public void EnableTransparency(bool enable) {
-		if (!IsActive) return;
-
-		if (enable) {
-			// 現在のウィンドウ情報を記憶
-			StoreWindowSize();
-
-            // ウィンドウサイズ変更
-            if (this.TopmostWhenTransparent)
-            {
-                EnableTopmost(true);
-            }
-			SetSize(this.NormalClientSize);
-
-			// 全面をGlassにする
-			DwmApi.DwmExtendIntoClientAll (hWnd);
-
-            // 枠無しウィンドウにする
-            EnableBorderless(true);
-		} else {
-			// ウィンドウスタイルを戻す
-			EnableBorderless(false);
-
-            // 操作の透過をやめる
-            EnableUnfocusable(false);
-
-            // 枠のみGlassにする
-            //	※ 本来のウィンドウが枠のみで無かった場合は残念ながら表示が戻りません
-            DwmApi.MARGINS margins = new DwmApi.MARGINS (0, 0, 0, 0);
-			DwmApi.DwmExtendFrameIntoClientArea (hWnd, margins);
-
-			// ウィンドウサイズ変更
-            if (this.TopmostWhenTransparent)
-            {
-			    EnableTopmost(false);
-            }
-			SetSize(this.NormalWindowSize);
 		}
-	
-		// ウィンドウ再描画
-		WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
+
+		// カメラの元の背景を記憶
+		if (currentCamera)
+		{
+			originalCameraClearFlags = currentCamera.clearFlags;
+			originalCameraBackground = currentCamera.backgroundColor;
+
+		}
+		// 描画色抽出用テクスチャ
+		colorPickerTexture = new Texture2D(1, 1, TextureFormat.ARGB32, false);
+
+		// ウィンドウ制御用のインスタンス作成
+		uniWin = new UniWinApi();
+
+		// 自分のウィンドウを取得
+		FindMyWindow();
+	}
+
+	void Start()
+	{
+		// マウスカーソル下の色を取得させるコルーチンを開始
+		StartCoroutine(PickColorCoroutine());
+	}
+
+	void OnDestroy()
+	{
+		uniWin.Dispose();
+	}
+
+	// Update is called once per frame
+	void Update () {
+		// キー、マウス操作の下ウィンドウへの透過状態を更新
+		UpdateClickThrough();
+
+		// マウスドラッグでウィンドウ移動
+		DragMove();
+
+		// ウィンドウ枠が復活している場合があるので監視するため、呼ぶ
+		uniWin.Update();
 	}
 
 	/// <summary>
-	/// ウィンドウの枠を消去/戻す
+	/// ウィンドウへのフォーカスが変化したときに呼ばれる
 	/// </summary>
-	/// <description></description>
-	/// <param name="enable">trueだと枠無し。falseだと標準</param>
-	public void EnableBorderless(bool enable) {
-		if (!IsActive) return;
+	/// <param name="focus"></param>
+	private void OnApplicationFocus(bool focus)
+	{
+		//if (focus)
+		//{
+		//	// もしウィンドウハンドル取得に失敗していたら再取得
+		//	if (!uniWin.IsActive)
+		//	{
+		//		FindMyWindow();
+		//	}
 
-		if (enable) {
-			// 枠無しウィンドウにする
-			//long val = WinApi.GetWindowLong (hWnd, WinApi.GWL_STYLE) & ~WinApi.WS_OVERLAPPEDWINDOW;
-			//long val = WinApi.WS_VISIBLE | WinApi.WS_POPUP;
-			this.CurrentWindowStyle = this.NormalWindowStyle & ~WinApi.WS_OVERLAPPEDWINDOW;
-			WinApi.SetWindowLong (hWnd, WinApi.GWL_STYLE, this.CurrentWindowStyle);
-		} else {
-			// ウィンドウスタイルを戻す
-			this.CurrentWindowStyle = this.NormalWindowStyle;
-			WinApi.SetWindowLong (hWnd, WinApi.GWL_STYLE, this.CurrentWindowStyle);
+		//	// アクティブウィンドウを監視して
+		//	if (!isWindowChecked)
+		//	{
+		//		if (uniWin.CheckActiveWindow())
+		//		{
+		//			isWindowChecked = true; // どうやら正しくウィンドウをつかめているよう
+		//		}
+		//		else
+		//		{
+		//			// ウィンドウが違っているようなので、もう一度アクティブウィンドウを取得
+		//			uniWin.Reset();
+		//			uniWin.Dispose();
+		//			uniWin = new UniWinApi();
+		//			FindMyWindow();
+		//		}
+		//	}
+		//}
+	}
+
+	/// <summary>
+	/// ウィンドウ状態が変わったときに呼ぶイベントを処理
+	/// </summary>
+	private void StateChangedEvent()
+	{
+		if (OnStateChange != null)
+		{
+			OnStateChange();
 		}
 	}
 
-    /// <summary>
-    /// Extended window style で操作の透過/戻す
-    /// </summary>
-    /// <param name="isUnfocusable">If set to <c>true</c> is top.</param>
-    public void EnableUnfocusable(bool isUnfocusable)
-    {
-        if (!IsActive) return;
-
-        if (isUnfocusable)
-        {
-            long exstyle = this.CurrentWindowExStyle;
-            exstyle |= WinApi.WS_EX_TRANSPARENT;
-            exstyle |= WinApi.WS_EX_LAYERED;
-            this.CurrentWindowExStyle = exstyle;
-            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
-        }
-        else
-        {
-            this.CurrentWindowExStyle = this.NormalWindowExStyle;
-            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
-        }
-    }
-
 	/// <summary>
-	/// ウィンドウ最大化
+	/// 最大化時以外なら、マウスドラッグによってウィンドウを移動
 	/// </summary>
-	public void Maximize() {
-		if (!IsActive) return;
-		this.CurrentWindowStyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_STYLE);
-		WinApi.ShowWindow(hWnd, WinApi.SW_MAXIMIZE);
+	void DragMove()
+	{
+		// ドラッグでの移動が無効化されていた場合
+		if (!enableDragMove)
+		{
+			isDragging = false;
+			return;
+		}
+
+		// 最大化時またはフルスクリーンならウィンドウ移動は行わない
+		if (uniWin.IsMaximized || Screen.fullScreen)
+		{
+			isDragging = false;
+			return;
+		}
+
+		// マウスドラッグでウィンドウ移動
+		if (Input.GetMouseButtonDown(0))
+		{
+			lastMousePosition = UniWinApi.GetCursorPosition();
+			isDragging = true;
+		}
+		if (!Input.GetMouseButton(0))
+		{
+			isDragging = false;
+		}
+		if (isDragging)
+		{
+			Vector2 mousePos = UniWinApi.GetCursorPosition();
+			Vector2 delta = mousePos - lastMousePosition;
+			lastMousePosition = mousePos;
+
+			Vector2 windowPosition = uniWin.GetPosition();  // 現在のウィンドウ位置を取得
+			windowPosition += delta; // ウィンドウ位置に上下左右移動分を加える
+			uniWin.SetPosition(windowPosition);   // ウィンドウ位置を設定
+		}
 	}
 
 	/// <summary>
-	/// ウィンドウ最小化
+	/// 画素の色を基に操作受付を切り替える
 	/// </summary>
-	public void Minimize() {
-		if (!IsActive) return;
-		this.CurrentWindowStyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_STYLE);
-		WinApi.ShowWindow(hWnd, WinApi.SW_MINIMIZE);
-	}
-	
-	/// <summary>
-	/// 最大化または最小化したウィンドウを元に戻す
-	/// </summary>
-	public void Restore() {
-		if (!IsActive) return;
-		WinApi.ShowWindow(hWnd, WinApi.SW_RESTORE);
-		this.CurrentWindowStyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_STYLE);
-	}
-
-	/// <summary>
-	/// Gets the product-name
-	/// </summary>
-	/// <description>http://gamedev.stackexchange.com/questions/68784/how-do-i-access-the-product-name-in-unity-4</description>
-	/// <returns>The project name.</returns>
-	public static string GetProjectName() {
-		string[] s = Application.dataPath.Split('/');
-		string projectName = s[s.Length - 2];
-		return projectName;
-	}
-
-	#region マウス操作関連
-	/// <summary>
-	/// マウスカーソルを指定座標へ移動させる
-	/// </summary>
-	/// <param name="screenPosition">スクリーン上の絶対座標。（Unityのウィンドウが基準では無い）</param>
-	public void SetCursorPosition(Vector2 screenPosition) {
-		WinApi.SetCursorPos((int)screenPosition.x, (int)screenPosition.y);
+	void UpdateClickThrough()
+	{
+		if (_isClickThrough)
+		{
+			if (onOpaquePixel)
+			{
+				if (uniWin != null) uniWin.EnableClickThrough(false);
+				_isClickThrough = false;
+			}
+		}
+		else
+		{
+			if (isTransparent && !onOpaquePixel && !isDragging)
+			{
+				if (uniWin != null) uniWin.EnableClickThrough(true);
+				_isClickThrough = true;
+			}
+		}
 	}
 
 	/// <summary>
-	/// マウスカーソル座標を取得
+	/// OnPostRenderではGUI描画前になってしまうため、コルーチンを用意
 	/// </summary>
-	/// <returns>スクリーン上の絶対座標。（Unityのウィンドウが基準では無い）</returns>
-	public Vector2 GetCursorPosition() {
-		WinApi.POINT point;
-		WinApi.GetCursorPos(out point);
-		return new Vector2(point.x, point.y);
+	/// <returns></returns>
+	private IEnumerator PickColorCoroutine()
+	{
+		while (Application.isPlaying)
+		{
+			yield return new WaitForEndOfFrame();
+			MyPostRender(currentCamera);
+		}
+		yield return null;
 	}
 
 	/// <summary>
-	/// マウスの左ボタンが離されたイベントを発生させます
+	/// マウス下の画素が透明かどうかを確認
 	/// </summary>
-	public void SendMouseUp() {
-		SendMouseUp(0);
+	/// <param name="cam"></param>
+	void MyPostRender(Camera cam)
+	{
+		// カメラが不明ならば何もしない
+		if (!cam) return;
+
+		Vector2 mousePos = Input.mousePosition;
+		Rect camRect = cam.pixelRect;
+
+		//// コルーチン & WaitForEndOfFrame ではなく、OnPostRenderで呼ぶならば、MSAAによって上下反転しないといけない？
+		//if (QualitySettings.antiAliasing > 1) mousePos.y = camRect.height - mousePos.y;
+
+		if (camRect.Contains(mousePos))
+		{
+			try
+			{
+				// Reference http://tsubakit1.hateblo.jp/entry/20131203/1386000440
+				colorPickerTexture.ReadPixels(new Rect(mousePos, Vector2.one), 0, 0);
+				Color color = colorPickerTexture.GetPixel(0, 0);
+				pickedColor = color;
+				onOpaquePixel = (color.a >= opaqueThreshold);  // αがしきい値以上ならば不透過とする
+			} catch (System.Exception ex)
+			{
+				// 稀に範囲外になってしまうよう
+				Debug.LogError(ex.Message);
+				onOpaquePixel = false;
+			}
+		} else
+		{
+			onOpaquePixel = false;
+		}
 	}
 
 	/// <summary>
-	/// マウスのボタンが離されたイベントを発生させます
+	/// 自分のウィンドウハンドルを見つける
 	/// </summary>
-	/// <param name="button">0:左, 1:右, 2:中</param>
-	public void SendMouseUp(int button) {
-		WinApi.mouse_event(
-			button == 1 ? WinApi.MOUSEEVENTF_RIGHTUP
-			: button == 2 ? WinApi.MOUSEEVENTF_MIDDLEUP
-			: WinApi.MOUSEEVENTF_LEFTUP,
-			0, 0, 0, IntPtr.Zero
-			);
+	private void FindMyWindow()
+	{
+		// ウィンドウが確かではないとしておく
+		isWindowChecked = false;
+
+		//// 現在このウィンドウがアクティブでなければ、取得はやめておく
+		//if (!Application.isFocused) return;
+
+		// 今アクティブなウィンドウを取得
+		var window = UniWinApi.FindWindow();
+		if (window == null) return;
+
+		//if (Application.isEditor) {
+		//	// Unityエディタと一致するかチェック
+		//	//  （別アプリのウィンドウは対象とさせない）
+		//	if (window.ProcessName != "Unity") return;
+		//} else {
+		//	// このUnityプロジェクトの名前と一致するかどうかをチェック
+		//	//  （別アプリのウィンドウは対象とさせない）
+		//	if (window.Title != Application.productName) return;
+		//}
+
+		// 見つかったウィンドウを利用開始
+		uniWin.SetWindow(window);
+
+		// 初期状態を反映
+		SetTopmost(_isTopmost);
+		SetMaximized(_isMaximized);
+		SetMinimized(_isMinimized);
+		SetTransparent(_isTransparent);
+		if (_enableFileDrop) BeginFileDrop();
 	}
 
 	/// <summary>
-	/// マウスの左ボタンが押されたイベントを発生させます
+	/// ウィンドウ透過状態になった際、自動的に背景を透明単色に変更する
 	/// </summary>
-	public void SendMouseDown() {
-		SendMouseDown(0);
+	/// <param name="isTransparent"></param>
+	void SetCameraBackground(bool isTransparent)
+	{
+		// カメラが特定できていなければ何もしない
+		if (!currentCamera) return;
+
+		if (isTransparent)
+		{
+			currentCamera.clearFlags = CameraClearFlags.SolidColor;
+			currentCamera.backgroundColor = Color.clear;
+		}
+		else
+		{
+			currentCamera.clearFlags = originalCameraClearFlags;
+			currentCamera.backgroundColor = originalCameraBackground;
+		}
 	}
-	
+
 	/// <summary>
-	/// マウスのボタンが押されたイベントを発生させます
+	/// 透明化状態を切替
 	/// </summary>
-	/// <param name="button">0:左, 1:右, 2:中</param>
-	public void SendMouseDown(int button) {
-		WinApi.mouse_event(
-			button == 1 ? WinApi.MOUSEEVENTF_RIGHTDOWN
-			: button == 2 ? WinApi.MOUSEEVENTF_MIDDLEDOWN
-			: WinApi.MOUSEEVENTF_LEFTDOWN,
-			0, 0, 0, IntPtr.Zero
-			);
+	/// <param name="transparent"></param>
+	public void SetTransparent(bool transparent)
+	{
+		//if (_isTransparent == transparent) return;
+
+		_isTransparent = transparent;
+		SetCameraBackground(transparent);
+
+		if (uniWin != null)
+		{
+			uniWin.EnableTransparent(transparent);
+		}
+		UpdateClickThrough();
+		StateChangedEvent();
 	}
-    #endregion
 
-    #region キー操作関連
-    /// <summary>
-    /// キーコードを送ります
-    /// </summary>
-    public void SendKey(KeyCode code)
-    {
-        WinApi.PostMessage(this.hWnd, WinApi.WM_IME_CHAR, (long)code, IntPtr.Zero);
-    }
-    #endregion
+	/// <summary>
+	/// 最大化を切替
+	/// </summary>
+	public void SetMaximized(bool maximized)
+	{
+		//if (_isMaximized == maximized) return;
+		if (uniWin == null)
+		{
+			_isMaximized = maximized;
+		} else
+		{
 
-    #region ファイルドロップ関連
+			if (maximized)
+			{
+				uniWin.Maximize();
+			}
+			else if (uniWin.IsMaximized)
+			{
+				uniWin.Restore();
+			}
+			_isMaximized = uniWin.IsMaximized;
+		}
+		StateChangedEvent();
+	}
 
-    /// <summary>
-    /// 現在のウィンドウがファイルのドラッグアンドドロップを受け入れるかどうかを設定します
-    /// </summary>
-    /// <param name="accept"></param>
-    public void SetDragAcceptFiles(bool accept)
-    {
-        if (this.IsActive)
-        {
-            WinApi.DragAcceptFiles(this.hWnd, true);
-        }
-    }
+	/// <summary>
+	/// 最小化を切替
+	/// </summary>
+	public void SetMinimized(bool minimized)
+	{
+		//if (_isMinimized == minimized) return;
+		if (uniWin == null)
+		{
+			_isMinimized = minimized;
+		} else
+		{
+			if (minimized)
+			{
+				uniWin.Minimize();
+			}
+			else if (uniWin.IsMinimized)
+			{
+				uniWin.Restore();
+			}
+			_isMinimized = uniWin.IsMinimized;
+		}
+		StateChangedEvent();
+	}
 
-    public delegate void FilesDropped(string[] files);
-    public event FilesDropped OnFilesDropped;
+	/// <summary>
+	/// 最前面を切替
+	/// </summary>
+	/// <param name="topmost"></param>
+	public void SetTopmost(bool topmost)
+	{
+		//if (_isTopmost == topmost) return;
+		if (uniWin == null) return;
 
-    private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
-    private IntPtr newWndProcPtr = IntPtr.Zero;
-    private IntPtr oldWndProcPtr = IntPtr.Zero;
-    private WndProcDelegate newWndProc = null;
+		uniWin.EnableTopmost(topmost);
+		_isTopmost = uniWin.IsTopmost;
+		StateChangedEvent();
+	}
 
-    // 参考 https://qiita.com/DandyMania/items/d1404c313f67576d395f
-    private IntPtr wndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
-    {
-        if (msg == WinApi.WM_DROPFILES)
-        {
-            IntPtr hDrop = wParam;
-            uint num = WinApi.DragQueryFile(hDrop, 0xFFFFFFFF, null, 0);
-            string[] files = new string[num];
+	/// <summary>
+	/// Begin to accept file drop.
+	/// </summary>
+	public void BeginFileDrop()
+	{
+		if (uniWin != null)
+		{
+			uniWin.BeginFileDrop();
+		}
+		_enableFileDrop = true;
+	}
 
-            uint bufferSize = 1024;
-            StringBuilder path = new StringBuilder((int)bufferSize);
-            for (uint i = 0; i < num; i++)
-            {
-                uint size = WinApi.DragQueryFile(hDrop, i, path, bufferSize);
-                files[i] = path.ToString();
-                path.Length = 0;
-            }
+	/// <summary>
+	/// End to accept file drop.
+	/// </summary>
+	public void EndFileDrop()
+	{
+		if (uniWin != null)
+		{
+			uniWin.EndFileDrop();
+		}
+		_enableFileDrop = false;
+	}
 
-            WinApi.DragFinish(hDrop);
-
-            if (OnFilesDropped != null)
-            {
-                OnFilesDropped(files);
-            }
-        }
-
-        //try {
-        //    return WinApi.CallWindowProc(oldWndProcPtr, hWnd, msg, wParam, lParam);
-        //} catch
-        //{
-        //    //return WinApi.DefWindowProc(hWnd, msg, wParam, lParam);
-        //    return IntPtr.Zero;
-        //}
-
-        return WinApi.CallWindowProc(oldWndProcPtr, hWnd, msg, wParam, lParam);
-    }
-
-    /// <summary>
-    /// ウィンドウプロシージャをフック
-    /// </summary>
-    private void InitWndProc()
-    {
-        if (this.IsActive)
-        {
-            newWndProc = new WndProcDelegate(wndProc);
-            newWndProcPtr = Marshal.GetFunctionPointerForDelegate(newWndProc);
-            oldWndProcPtr = WinApi.SetWindowLongPtr(this.hWnd, WinApi.GWLP_WNDPROC, newWndProcPtr);
-
-            WinApi.DragAcceptFiles(this.hWnd, true);
-        }
-    }
-
-    /// <summary>
-    /// ウィンドウプロシージャを戻す
-    /// </summary>
-    private void RestoreWndProc()
-    {
-        if (newWndProc != null && oldWndProcPtr != IntPtr.Zero)
-        {
-            WinApi.SetWindowLongPtr(this.hWnd, WinApi.GWLP_WNDPROC, oldWndProcPtr);
-            oldWndProcPtr = IntPtr.Zero;
-            newWndProcPtr = IntPtr.Zero;
-            newWndProc = null;
-
-            // Unityだと通常はドラッグ不可
-            //SetDragAcceptFiles(false);
-        }
-    }
-
-    /// <summary>
-    /// 破棄時にはウィンドウプロシージャを戻す必要がある
-    /// </summary>
-    public void Dispose()
-    {
-        RestoreWndProc();
-    }
-
-    #endregion
+	/// <summary>
+	/// 終了時にはウィンドウプロシージャを戻す処理が必要
+	/// </summary>
+	void OnApplicationQuit()
+	{
+		if (Application.isPlaying)
+		{
+			uniWin.Dispose();
+		}
+	}
 }

@@ -1,68 +1,80 @@
-WindowController
+UniWinApi
 
-Copyright (c) 2014-2015 Kirurobo
-Released under Unlicense <http://unlicense.org/>
+Copyright (c) 2014-2018 Kirurobo
+Released under CC0 <http://creativecommons.org/publicdomain/zero/1.0/deed.ja>
 
 
 ■ 概要
-・Windows API のウィンドウ操作機能を Unity 上から呼び出すためのクラスです。
+・Windows API の機能を Unity 上から呼び出すためのクラスです。
 
 
-■ 必要環境
-・Unity 4.6 以降（おそらく）
-・Windows Vista 以降（おそらく）
+■ 確認済み動作環境
+・Unity 5.6.6f2, Unity 2018.2.6f1
+・Windows 10 Pro x64 
+・GeForce GTX980, GeForce GTX 1070
 
 
 ■ 内容物
-・UnityChan … ユニティちゃん関連（Unity Technologies Japan 合同会社さん配布物の一部）
-・WindowController
-	・Example
-		・SampleBehaviour.cs … クラス利用のサンプル
-		・SimpleSample.unity … Cubeのみのサンプル
-		・UnityChanSample.uniy … ユニティちゃんに動いていただくサンプルシーン
+本体は下記フォルダ配下です。
+・UniWinApi
+	・Examples
+		サンプルシーンがあります。
 	・Scripts
-		・WindowController … 本体
+		・WindowController.cs … 自ウィンドウを操作する前提で実装したクラス
+		・UniWinApi.cs … Windows API をまとめた、本体
 		・Wrapper
-			・DwmApi … DWM API のラッパー（@ru__enさんによる）
-			・WinApi … Windows API のラッパー（@ru__enさんによる）
+			・DwmApi … DWM API のラッパー
+			・WinApi … Windows API のラッパー
+		・Editor
+			・WindowControllerEditor.cs … WindowControllerを利用する上でのエディタ拡張
 
 
 ■ 利用方法
-・WindowController/Scritps 内のファイルを Assets 内の適当な場所に置いてください。
-・具体的な使い方はサンプルでご覧ください…。
-・手順としては
-	1. WindowController のインスタンスを作成
-	2. FindHandle()でウィンドウを見つける
-	3. あとは SetPosition() や Maximize() などが利用できます
-・SampleBehaviour.cs を適当なオブジェクトにアタッチするだけでも一応動きます。
-・ウィンドウを透過させる場合の設定
-	・カメラのBackgroundはRGBAすべてゼロにしておく
-	・透過させたくない部分はアルファ値を255になるようにする
-	　（シェーダーによっては半透明になります）
+UniWinApi が本体ですが、自ウィンドウを操作するものとして WindowController を用意しています。
+
+WindowController をヒエラルキーの中の適当なゲームオブジェクトにアタッチしてみてください。
+インスペクタで下記を変更するか、スクリプトから変更するとウィンドウの状態を変えられます。
+・IsTransparent … ウィンドウ枠を透明化
+・IsTopmost … 常に最前面
+・IsMaximized … ウィンドウ最大化
+・IsMinimized … ウィンドウ最小化
+・EnableFileDrop … ファイルドロップを受け付ける
+・EnableDragMove … マウス左ボタンでウィンドウを移動できる
+
+ファイルドロップを利用する場合、OnFilesDropped(string[] files) というイベントがありますので、そちらに処理を追加してください。
+files にはドロップされたファイルのパスが入ります。
+
+ドキュメントは整えられていないため、利用例はサンプルをご覧ください (^-^;
 
 
 ■ 注意点
 ・ウィンドウハンドルを確実に取る方法が分ってないので、別のウィンドウが
-　操作対象になったりするかも知れません。（むしろ別のウィンドウも操作できます）
+　操作対象になったりするかも知れません。
+　（むしろ別のウィンドウもタイトルやクラス名で指定して操作できます。）
 ・閉じるボタンがなくなったり、ウィンドウを見失った場合、タスクマネージャから
 　終了する必要が出るかも知れません。
 
 
+■ FAQ
+・エディタ上で透明にすると表示がおかしいのですが。
+	・仕様です。
+	・Game ウィンドウはどうも背景が塗りつぶされてしまっているようで、透明化されません。
+	・透明化はビルドしたものでご確認ください。
+
+
 ■ ライセンス
-・UnityChanフォルダ以下は『ユニティちゃんライセンス条項』に従います。
-
-・Kiruroboが作成したファイルは、Unlicense（パブリックドメイン）としています。
+・Kiruroboが作成したファイルは、CC0（パブリックドメイン）としています。
 　著作権表示なしで修正、複製、再配布も可能です。
-　好きに使っていただけますがもちろん無保証です。
-
-・WinApi.cs, DwmApi.cs は @ru__en さんによりますが
-　こちらも利用に制限はありません。
-　ただしいずれも Microsoft の仕様書やソフトウェアに基づいています
-　また DwmApi.cs は http://msdn.microsoft.com/ja-jp/magazine/cc163435.aspx
-　に基づいています。
+　好きに使っていただけますが無保証です。
+　※他の方のブログなど参考にしている部分が大いにありますが、
+　　一通り作成した結果、同様の機能を実装した場合は似た内容になるとして、
+　　著作権で保護される範囲においては基本的に独自のものとしてCC0にできると判断しています。
 
 
 ■ 更新履歴
+2018/12/07 UniWinApiのアセット部分を分離
+2018/09/09 おおよそ想定通りに動作しそうなため、パッケージを公開
+2018/08/24 UniWinApiとして整理し直した
 2015/03/03 最小化、最大化時はその直前の状態を保存するようにした
 2014/04/26 公開用初版
 
