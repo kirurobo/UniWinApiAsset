@@ -371,13 +371,27 @@ namespace Kirurobo
 #if UNITY_EDITOR
 			// Gameビューを取得
 			// 参考： https://qiita.com/MARQUE/items/292c9080a686d95af1a5
-			var gameViewWin = UnityEditor.EditorWindow.GetWindow(System.Type.GetType("UnityEditor.GameView,UnityEditor")); ;
+			var gameViewWin = UnityEditor.EditorWindow.GetWindow(System.Type.GetType("UnityEditor.GameView,UnityEditor"));
+
+			//var gameViewWin = UnityEditor.EditorWindow.GetWindow<PreviewWindow>();
 
 			// そちらにフォーカスを与えて、アクティブなウィンドウを取得
 			gameViewWin.Focus();
 			//System.Threading.Thread.Sleep(500);
 			IntPtr hwnd = WinApi.GetActiveWindow();
-			WindowHandle gameWindow = new WindowHandle(hwnd);
+
+			//// 全面をGlassにする
+			//DwmApi.DwmExtendIntoClientAll(hwnd);
+
+			var rootHwnd = WinApi.GetAncestor(hwnd, WinApi.GA_ROOT);
+			if (hwnd != rootHwnd)
+			{
+				// 全面をGlassにする
+				//DwmApi.DwmExtendIntoClientAll(rootHwnd);
+			}
+			//var rootHwnd = hwnd;
+
+			WindowHandle gameWindow = new WindowHandle(rootHwnd);
 
 			// 一応PIDをチェックし、自分一致したらそのウィンドウを使うことにして終了
 			if (gameWindow.ProcessId == pid) return gameWindow;
@@ -494,6 +508,9 @@ namespace Kirurobo
 				// 現在のウィンドウ情報を記憶
 				StoreWindowSize();
 
+				// 枠無しウィンドウにする
+				EnableBorderless(true);
+
 				switch (_transparentType)
 				{
 					case Constants.TransparentType.Alpha:
@@ -506,9 +523,6 @@ namespace Kirurobo
 						EnableTransparentByLayered();
 						break;
 				}
-
-				// 枠無しウィンドウにする
-				EnableBorderless(true);
 
 				// ウィンドウ再描画
 				WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
@@ -543,10 +557,12 @@ namespace Kirurobo
 
 		private void EnableTransparentByLayered()
 		{
+
 			// 指定色での透過とする
 			Color32 color = KeyColor;
 			WinApi.COLORREF keyColorRef = new WinApi.COLORREF(color.r, color.g, color.b);
-			WinApi.SetLayeredWindowAttributes(hWnd, keyColorRef, 0xFF, WinApi.LWA_COLORKEY);
+			//WinApi.SetLayeredWindowAttributes(hWnd, keyColorRef, 0xFF, WinApi.LWA_COLORKEY | WinApi.LWA_ALPHA);
+			WinApi.SetLayeredWindowAttributes(hWnd, new WinApi.COLORREF(0), 0xCC, WinApi.LWA_ALPHA);
 
 			// レイヤードウィンドウにする
 			this.CurrentWindowExStyle |= WinApi.WS_EX_LAYERED;

@@ -137,4 +137,30 @@ namespace Kirurobo
 			return EditorGUI.GetPropertyHeight(property, label, true);
 		}
 	}
+
+	///// <summary>
+	///// プレビューウィンドウ
+	///// </summary>
+	//public class PreviewWindow : UnityEditor.EditorWindow
+	//{
+	//	[UnityEditor.MenuItem("Tools/UniWinApiPreview")]
+	//	static void ShowWindow()
+	//	{
+	//		Debug.Log("Preview!");
+	//		var win = UnityEditor.EditorWindow.GetWindow<PreviewWindow>("Preview", true);
+	//		win.ShowAuxWindow();
+	//		win.name = "UniWinApi Preview";
+
+	//		Debug.Log(win.position);
+	//	}
+
+	//	private void OnGUI()
+	//	{
+			
+	//		if (GUILayout.Button("OK"))
+	//		{
+
+	//		}
+	//	}
+	//}
 }

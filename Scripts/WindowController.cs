@@ -130,30 +130,30 @@ namespace Kirurobo
 		[ReadOnly, Tooltip("Pixel color under the mouse pointer. (Read only)")]
 		public Color pickedColor;
 
-		public Color KeyColor
-		{
-			get { return ((uniWin != null) ? Color.black : uniWin.KeyColor); }
-			set { if (uniWin != null) { uniWin.KeyColor = value; }; }
-		}
+		public Color KeyColor = new Color32(2, 1, 0, 0);
+		//{
+		//	get { return ((uniWin != null) ? Color.black : uniWin.KeyColor); }
+		//	set { if (uniWin != null) { uniWin.KeyColor = value; }; }
+		//}
 
-		public UniWinApi.Constants.TransparentType TransparentType
-		{
-			get { return ((uniWin != null) ? UniWinApi.Constants.TransparentType.Alpha : uniWin.TransparentType); }
-			set {
-				if (uniWin != null) {
-					if (isTransparent && (uniWin.TransparentType != value))
-					{
-						isTransparent = false;
-						uniWin.TransparentType = value;
-						isTransparent = true;
-					}
-					else
-					{
-						uniWin.TransparentType = value;
-					}
-				};
-			}
-		}
+		public UniWinApi.Constants.TransparentType TransparentType = UniWinApi.Constants.TransparentType.Alpha;
+		//{
+		//	get { return ((uniWin != null) ? UniWinApi.Constants.TransparentType.Alpha : uniWin.TransparentType); }
+		//	set {
+		//		if (uniWin != null) {
+		//			if (isTransparent && (uniWin.TransparentType != value))
+		//			{
+		//				isTransparent = false;
+		//				uniWin.TransparentType = value;
+		//				isTransparent = true;
+		//			}
+		//			else
+		//			{
+		//				uniWin.TransparentType = value;
+		//			}
+		//		};
+		//	}
+		//}
 
 		private bool isDragging = false;
 		private Vector2 lastMousePosition;
@@ -247,39 +247,6 @@ namespace Kirurobo
 		}
 
 		/// <summary>
-		/// ウィンドウへのフォーカスが変化したときに呼ばれる
-		/// </summary>
-		/// <param name="focus"></param>
-		private void OnApplicationFocus(bool focus)
-		{
-			//if (focus)
-			//{
-			//	// もしウィンドウハンドル取得に失敗していたら再取得
-			//	if (!uniWin.IsActive)
-			//	{
-			//		FindMyWindow();
-			//	}
-
-			//	// アクティブウィンドウを監視して
-			//	if (!isWindowChecked)
-			//	{
-			//		if (uniWin.CheckActiveWindow())
-			//		{
-			//			isWindowChecked = true; // どうやら正しくウィンドウをつかめているよう
-			//		}
-			//		else
-			//		{
-			//			// ウィンドウが違っているようなので、もう一度アクティブウィンドウを取得
-			//			uniWin.Reset();
-			//			uniWin.Dispose();
-			//			uniWin = new UniWinApi();
-			//			FindMyWindow();
-			//		}
-			//	}
-			//}
-		}
-
-		/// <summary>
 		/// ウィンドウ状態が変わったときに呼ぶイベントを処理
 		/// </summary>
 		private void StateChangedEvent()
@@ -336,7 +303,7 @@ namespace Kirurobo
 		/// </summary>
 		void UpdateClickThrough()
 		{
-			if (_isClickThrough)
+			if (_isClickThrough && this.TransparentType != UniWinApi.Constants.TransparentType.KeyColor)
 			{
 				if (onOpaquePixel)
 				{
@@ -414,22 +381,9 @@ namespace Kirurobo
 			// ウィンドウが確かではないとしておく
 			isWindowChecked = false;
 
-			//// 現在このウィンドウがアクティブでなければ、取得はやめておく
-			//if (!Application.isFocused) return;
-
-			// 今アクティブなウィンドウを取得
+			// 自分のウィンドウを取得
 			var window = UniWinApi.FindWindow();
 			if (window == null) return;
-
-			//if (Application.isEditor) {
-			//	// Unityエディタと一致するかチェック
-			//	//  （別アプリのウィンドウは対象とさせない）
-			//	if (window.ProcessName != "Unity") return;
-			//} else {
-			//	// このUnityプロジェクトの名前と一致するかどうかをチェック
-			//	//  （別アプリのウィンドウは対象とさせない）
-			//	if (window.Title != Application.productName) return;
-			//}
 
 			// 見つかったウィンドウを利用開始
 			uniWin.SetWindow(window);
@@ -454,9 +408,9 @@ namespace Kirurobo
 			if (isTransparent)
 			{
 				currentCamera.clearFlags = CameraClearFlags.SolidColor;
-				if (uniWin.TransparentType == UniWinApi.Constants.TransparentType.KeyColor)
+				if (this.TransparentType == UniWinApi.Constants.TransparentType.KeyColor)
 				{
-					currentCamera.backgroundColor = KeyColor;
+					currentCamera.backgroundColor = this.KeyColor;
 				}
 				else
 				{
@@ -483,6 +437,9 @@ namespace Kirurobo
 
 			if (uniWin != null)
 			{
+				uniWin.KeyColor = this.KeyColor;
+				uniWin.TransparentType = this.TransparentType;
+
 				uniWin.EnableTransparent(transparent);
 			}
 			UpdateClickThrough();
