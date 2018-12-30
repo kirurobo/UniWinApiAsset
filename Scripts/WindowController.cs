@@ -157,8 +157,8 @@ namespace Kirurobo
         /// <summary>
         /// ウィンドウ状態が変化したときに発生するイベント
         /// </summary>
-        public event OnStateChangeDelegate OnStateChange;
-        public delegate void OnStateChangeDelegate();
+        public event OnStateChangedDelegate OnStateChanged;
+        public delegate void OnStateChangedDelegate();
 
         /// <summary>
         /// 表示されたテクスチャ
@@ -227,9 +227,9 @@ namespace Kirurobo
         /// </summary>
         private void StateChangedEvent()
         {
-            if (OnStateChange != null)
+            if (OnStateChanged != null)
             {
-                OnStateChange();
+                OnStateChanged();
             }
         }
 
