@@ -85,6 +85,20 @@ namespace Kirurobo
 			}
 		}
 
+		public class Constants
+		{
+			/// <summary>
+			/// 非矩形ウィンドウ実現の方式
+			/// </summary>
+			public enum TransparentType
+			{
+				None,
+				Alpha,
+				KeyColor,
+			}
+		}
+
+
 		/// <summary>
 		/// このウィンドウのハンドル
 		/// </summary>
@@ -113,6 +127,26 @@ namespace Kirurobo
 		/// </summary>
 		public bool IsTopmost { get { return (IsActive && _isTopmost); } }
 		private bool _isTopmost = false;
+
+		/// <summary>
+		/// 透過方式を取得／設定
+		/// </summary>
+		public Constants.TransparentType TransparentType {
+			get { return _transparentType; }
+			set {
+				if (_transparentType != value)
+				{
+					// 切り替えられたときの処理
+				}
+				_transparentType = value;
+			}
+		}
+		private Constants.TransparentType _transparentType = Constants.TransparentType.Alpha;
+
+		/// <summary>
+		/// 単色透過の場合のキー色
+		/// </summary>
+		public Color KeyColor = new Color32(2, 1, 0, 0);
 
 		/// <summary>
 		/// ウィンドウ位置
@@ -334,10 +368,27 @@ namespace Kirurobo
 			int pid = process.Id;
 			//Debug.Log("PID: " + pid);
 
+#if UNITY_EDITOR
+			// Gameビューを取得
+			// 参考： https://qiita.com/MARQUE/items/292c9080a686d95af1a5
+			var gameViewWin = UnityEditor.EditorWindow.GetWindow(System.Type.GetType("UnityEditor.GameView,UnityEditor")); ;
+
+			// そちらにフォーカスを与えて、アクティブなウィンドウを取得
+			gameViewWin.Focus();
+			//System.Threading.Thread.Sleep(500);
+			IntPtr hwnd = WinApi.GetActiveWindow();
+			WindowHandle gameWindow = new WindowHandle(hwnd);
+
+			// 一応PIDをチェックし、自分一致したらそのウィンドウを使うことにして終了
+			if (gameWindow.ProcessId == pid) return gameWindow;
+#endif
+
 			// 現存するウィンドウ一式を取得
 			WindowHandle[] handles = FindWindows();
 			foreach (WindowHandle window in handles)
 			{
+				//Debug.Log(window);
+
 				// PIDが一致するものを検索
 				if (window.ProcessId == pid)
 				{
@@ -393,7 +444,7 @@ namespace Kirurobo
 					windowList.Add(window);
 				}
 				return 1;   // 列挙を継続するため0以外を返す
-		}), 0);
+			}), 0);
 
 			return windowList.ToArray();
 		}
@@ -443,8 +494,18 @@ namespace Kirurobo
 				// 現在のウィンドウ情報を記憶
 				StoreWindowSize();
 
-				// 全面をGlassにする
-				DwmApi.DwmExtendIntoClientAll(hWnd);
+				switch (_transparentType)
+				{
+					case Constants.TransparentType.Alpha:
+						DisableTransparentByLayered();
+						EnableTransparentByDWM();
+						break;
+
+					case Constants.TransparentType.KeyColor:
+						DisableTransparentByDWM();
+						EnableTransparentByLayered();
+						break;
+				}
 
 				// 枠無しウィンドウにする
 				EnableBorderless(true);
@@ -455,16 +516,22 @@ namespace Kirurobo
 			}
 			else
 			{
+				switch(_transparentType)
+				{
+					case Constants.TransparentType.Alpha:
+						DisableTransparentByDWM();
+						break;
+
+					case Constants.TransparentType.KeyColor:
+						DisableTransparentByLayered();
+						break;
+				}
+
 				// ウィンドウスタイルを戻す
 				EnableBorderless(false);
 
 				// 操作の透過をやめる
 				EnableClickThrough(false);
-
-				// 枠のみGlassにする
-				//	※ 本来のウィンドウが枠のみで無かった場合は残念ながら表示が戻りません
-				DwmApi.MARGINS margins = new DwmApi.MARGINS(0, 0, 0, 0);
-				DwmApi.DwmExtendFrameIntoClientArea(hWnd, margins);
 
 				// サイズ変更イベントを発生させる
 				SetSize(GetSize());
@@ -472,6 +539,42 @@ namespace Kirurobo
 
 			// ウィンドウ再描画
 			WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
+		}
+
+		private void EnableTransparentByLayered()
+		{
+			// 指定色での透過とする
+			Color32 color = KeyColor;
+			WinApi.COLORREF keyColorRef = new WinApi.COLORREF(color.r, color.g, color.b);
+			WinApi.SetLayeredWindowAttributes(hWnd, keyColorRef, 0xFF, WinApi.LWA_COLORKEY);
+
+			// レイヤードウィンドウにする
+			this.CurrentWindowExStyle |= WinApi.WS_EX_LAYERED;
+			WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+		}
+
+		private void DisableTransparentByLayered()
+		{
+			// 指定色でなく全体の透過率設定状態にする
+			WinApi.SetLayeredWindowAttributes(hWnd, new WinApi.COLORREF(0), 0xFF, WinApi.LWA_ALPHA);
+
+			// レイヤードウィンドウをやめる
+			this.CurrentWindowExStyle &= ~WinApi.WS_EX_LAYERED;
+			WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+		}
+
+		private void EnableTransparentByDWM()
+		{
+			// 全面をGlassにする
+			DwmApi.DwmExtendIntoClientAll(hWnd);
+		}
+
+		private void DisableTransparentByDWM()
+		{
+			// 枠のみGlassにする
+			//	※ 本来のウィンドウが何らかの範囲指定でGlassにしていた場合は、残念ながら表示が戻りません
+			DwmApi.MARGINS margins = new DwmApi.MARGINS(0, 0, 0, 0);
+			DwmApi.DwmExtendFrameIntoClientArea(hWnd, margins);
 		}
 
 		/// <summary>

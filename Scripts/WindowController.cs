@@ -25,7 +25,7 @@ namespace Kirurobo
 
 
 	/// <summary>
-	/// デスクトップマスコット風の利用法を想定した UniWinApi サンプル。
+	/// ウィンドウ操作をとりまとめるクラス
 	/// </summary>
 	public class WindowController : MonoBehaviour
 	{
@@ -129,6 +129,31 @@ namespace Kirurobo
 		/// </summary>
 		[ReadOnly, Tooltip("Pixel color under the mouse pointer. (Read only)")]
 		public Color pickedColor;
+
+		public Color KeyColor
+		{
+			get { return ((uniWin != null) ? Color.black : uniWin.KeyColor); }
+			set { if (uniWin != null) { uniWin.KeyColor = value; }; }
+		}
+
+		public UniWinApi.Constants.TransparentType TransparentType
+		{
+			get { return ((uniWin != null) ? UniWinApi.Constants.TransparentType.Alpha : uniWin.TransparentType); }
+			set {
+				if (uniWin != null) {
+					if (isTransparent && (uniWin.TransparentType != value))
+					{
+						isTransparent = false;
+						uniWin.TransparentType = value;
+						isTransparent = true;
+					}
+					else
+					{
+						uniWin.TransparentType = value;
+					}
+				};
+			}
+		}
 
 		private bool isDragging = false;
 		private Vector2 lastMousePosition;
@@ -429,7 +454,14 @@ namespace Kirurobo
 			if (isTransparent)
 			{
 				currentCamera.clearFlags = CameraClearFlags.SolidColor;
-				currentCamera.backgroundColor = Color.clear;
+				if (uniWin.TransparentType == UniWinApi.Constants.TransparentType.KeyColor)
+				{
+					currentCamera.backgroundColor = KeyColor;
+				}
+				else
+				{
+					currentCamera.backgroundColor = Color.clear;
+				}
 			}
 			else
 			{
