@@ -1,0 +1,3 @@
+[submodule "Scripts/Wrappers"]
+	path = Scripts/Wrappers
+	url = https://github.com/kirurobo/CSharpWinApi.git
