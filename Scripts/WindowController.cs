@@ -508,6 +508,20 @@ namespace Kirurobo
             _enableFileDrop = false;
         }
 
+
+        /// <summary>
+        /// Show open file dialog.
+        /// </summary>
+        /// <returns></returns>
+        public string ShowOpenFileDialog(string filter = "All files|*.*")
+        {
+            if (uniWin != null)
+            {
+                return uniWin.ShowOpenFileDialog(filter);
+            }
+            return null;
+        }
+
         /// <summary>
         /// 終了時にはウィンドウプロシージャを戻す処理が必要
         /// </summary>

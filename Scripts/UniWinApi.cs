@@ -875,6 +875,36 @@ namespace Kirurobo
         }
 
         #endregion
+
+        #region File open dialog
+
+        public string ShowOpenFileDialog(string filter = "All files|*.*")
+        {
+            string customFilter = null;
+            if (filter != null)
+            {
+                customFilter = filter.Replace('|', '\0');
+                if (customFilter.Substring(customFilter.Length - 1) != "\0")
+                {
+                    customFilter += "\0";   // 最後の区切りが省略されていたなら追加
+                }
+                customFilter += "\0";   // 終端
+            }
+
+            WinApi.OpenFileName ofn = new WinApi.OpenFileName();
+            if (customFilter != null)
+            {
+                ofn.filter = customFilter;
+            }
+            ofn.dlgOwner = this.hWnd;
+
+            if (WinApi.GetOpenFileName(ofn))
+            {
+                return ofn.file;
+            }
+            return null;
+        }
+        #endregion
     }
 
 }
