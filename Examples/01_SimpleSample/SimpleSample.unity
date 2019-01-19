@@ -203,10 +203,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 677645775}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd945dac262446d4a8623968cede723b, type: 3}
+  m_Script: {fileID: 11500000, guid: 13bcdf69fdb73ac4388722569c356a3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _isTransparent: 1
+  _isTransparent: 0
   _isTopmost: 0
   _isMaximized: 0
   _isMinimized: 0

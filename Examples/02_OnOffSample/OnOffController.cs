@@ -88,5 +88,21 @@ namespace Kirurobo
                 enableFileDropToggle.isOn = windowController.enableFileDrop;
             }
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        private void Update()
+        {
+            // Quit or stop playing when pressed [ESC]
+            if (Input.GetKey(KeyCode.Escape))
+            {
+#if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+#else
+                Application.Quit();
+#endif
+            }
+        }
     }
 }

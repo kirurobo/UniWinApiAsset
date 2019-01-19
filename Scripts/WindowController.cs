@@ -220,6 +220,17 @@ namespace Kirurobo
 
             // ウィンドウ枠が復活している場合があるので監視するため、呼ぶ
             uniWin.Update();
+
+            // デバッグ
+            if (Input.GetKey(KeyCode.Space))
+            {
+                var list = UniWinApi.FindWindows();
+                foreach (var window in list)
+                {
+                    Debug.Log(window);
+                }
+                Debug.Log("CheckActiveWindow: " + uniWin.CheckActiveWindow());
+            }
         }
 
         /// <summary>
@@ -388,17 +399,22 @@ namespace Kirurobo
         /// <param name="focus"></param>
         private void OnApplicationFocus(bool focus)
         {
+            Debug.Log("Focus:" + focus);
+
+            if (uniWin == null) return;
+
             if (focus)
             {
                 // もしウィンドウハンドル取得に失敗していたら再取得
                 if (!uniWin.IsActive)
                 {
+                    Debug.Log("Window is not active");
                     FindMyWindow();
                 }
-
-                // アクティブウィンドウを監視して
-                if (!isWindowChecked)
+                else if (!isWindowChecked)
                 {
+                    // 自分自身のウィンドウか確認できていなかった場合
+
                     if (uniWin.CheckActiveWindow())
                     {
                         isWindowChecked = true; // どうやら正しくウィンドウをつかめているよう

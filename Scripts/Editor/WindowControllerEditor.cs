@@ -40,6 +40,7 @@ namespace Kirurobo
 
         if (showButton)
         {
+            GUI.backgroundColor = Color.green;
             if (GUILayout.Button("Apply all recommended settings"))
             {
                 PlayerSettings.runInBackground = true;
@@ -56,6 +57,7 @@ namespace Kirurobo
 
             if (showButton)
             {
+                GUI.backgroundColor = Color.green;
                 if (GUILayout.Button("Apply all recommended settings"))
                 {
                     PlayerSettings.runInBackground = true;

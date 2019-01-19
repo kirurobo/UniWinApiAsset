@@ -662,7 +662,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 460515801}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 45c166114515e7849a328f3776b15123, type: 3}
+  m_Script: {fileID: 11500000, guid: f985bf036f5416a45b9dd4e31bc85075, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &511564869
@@ -2060,8 +2060,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1853111555}
-  - component: {fileID: 1853111554}
   - component: {fileID: 1853111556}
+  - component: {fileID: 1853111554}
   m_Layer: 0
   m_Name: WindowController
   m_TagString: Untagged
@@ -2077,15 +2077,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 1853111553}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c340e462be7892e408ed6f1a31d16e58, type: 3}
+  m_Script: {fileID: 11500000, guid: 13bcdf69fdb73ac4388722569c356a3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  transparentToggle: {fileID: 1031988593}
-  topmostToggle: {fileID: 805460080}
-  maximizedToggle: {fileID: 1720252017}
-  minimizedToggle: {fileID: 626014315}
-  enableFileDropToggle: {fileID: 511564871}
-  droppedFilesText: {fileID: 1570950903}
+  _isTransparent: 1
+  _isTopmost: 1
+  _isMaximized: 0
+  _isMinimized: 0
+  _enableFileDrop: 0
+  enableDragMove: 1
+  pickedColor: {r: 0, g: 0, b: 0, a: 0}
 --- !u!4 &1853111555
 Transform:
   m_ObjectHideFlags: 0
@@ -2107,16 +2108,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 1853111553}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd945dac262446d4a8623968cede723b, type: 3}
+  m_Script: {fileID: 11500000, guid: 3b335a5bc9945c9469568d1aba1b14e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _isTransparent: 0
-  _isTopmost: 0
-  _isMaximized: 0
-  _isMinimized: 0
-  _enableFileDrop: 0
-  enableDragMove: 1
-  pickedColor: {r: 0, g: 0, b: 0, a: 0}
+  transparentToggle: {fileID: 1031988593}
+  topmostToggle: {fileID: 805460080}
+  maximizedToggle: {fileID: 1720252017}
+  minimizedToggle: {fileID: 626014315}
+  enableFileDropToggle: {fileID: 511564871}
+  droppedFilesText: {fileID: 1570950903}
 --- !u!1 &1909436760
 GameObject:
   m_ObjectHideFlags: 0
@@ -2258,7 +2258,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2084589449}
   - component: {fileID: 2084589448}
-  - component: {fileID: 2084589447}
   - component: {fileID: 2084589446}
   - component: {fileID: 2084589445}
   m_Layer: 0
@@ -2276,13 +2275,6 @@ AudioListener:
   m_GameObject: {fileID: 2084589444}
   m_Enabled: 1
 --- !u!124 &2084589446
-Behaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 2084589444}
-  m_Enabled: 1
---- !u!92 &2084589447
 Behaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

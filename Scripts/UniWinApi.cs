@@ -61,13 +61,13 @@ namespace Kirurobo
                 }
 
                 // プロセス名を取得
-                int pid;
+                IntPtr pid;
                 WinApi.GetWindowThreadProcessId(hWnd, out pid);
 
                 // GetProcessNyId(PID) で指定PIDが存在しない例外になる場合があるため try {} を使用
                 try
                 {
-                    System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById(pid);
+                    System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById(pid.ToInt32());
                     ProcessName = p.ProcessName;
                     //ProcessId = p.Id;	// = pid; でおそらく同様
                 }
@@ -75,7 +75,7 @@ namespace Kirurobo
                 {
                     ProcessName = "";
                 }
-                ProcessId = pid;
+                ProcessId = pid.ToInt32();
                 //Debug.Log("PID: " + pid + ", Name: " + ProcessName);
             }
 
@@ -85,7 +85,7 @@ namespace Kirurobo
             /// <returns></returns>
             public override string ToString()
             {
-                return string.Format("HWND:{0} Proc:{1} Title:{2} Class:{3}", hWnd, ProcessName, Title, ClassName);
+                return string.Format("HWND:{0} PID:{4} Proc:{1} Title:{2} Class:{3}", hWnd, ProcessName, Title, ClassName, ProcessId);
             }
         }
 
@@ -165,6 +165,9 @@ namespace Kirurobo
         ///		hWndをキーとしたDictionaryでは複数に対応できないため、単純なListにして毎回検索
         /// </summary>
         private static List<UniWinApi> instances = new List<UniWinApi>();
+
+        private static WinApi.EnumWindowsDelegate myEnumWindowsDelegate;
+        private static List<WindowHandle> windowList = new List<WindowHandle>();
 
 
         /// <summary>
@@ -327,9 +330,9 @@ namespace Kirurobo
         }
 
         /// <summary>
-        /// アクティブウィンドウのハンドルを取得
+        /// 自ウィンドウと思われるハンドルを取得
         /// </summary>
-        /// <returns><c>true</c>, if window handle was set, <c>false</c> otherwise.</returns>
+        /// <returns>Null if failed</returns>
         static public WindowHandle FindWindow()
         {
             // 自分自身のPIDを取得し、スレッドを取得
@@ -337,6 +340,9 @@ namespace Kirurobo
             //return new WindowHandle(process.MainWindowHandle);	// ←これではダメだった。MainWindowHandle == 0 となった。
 
             int pid = process.Id;
+            Debug.Log("PID: " + pid);
+
+            IntPtr hwnd;
 
 #if UNITY_EDITOR
             // Gameビューを取得
@@ -346,7 +352,7 @@ namespace Kirurobo
             // Gameビューににフォーカスを与えてから、アクティブなウィンドウを取得
             gameViewWin.Focus();
             //System.Threading.Thread.Sleep(100);
-            IntPtr hwnd = WinApi.GetActiveWindow();
+            hwnd = WinApi.GetActiveWindow();
 
             var rootHwnd = hwnd;
             rootHwnd = WinApi.GetAncestor(hwnd, WinApi.GA_ROOT);
@@ -355,27 +361,39 @@ namespace Kirurobo
 
             // 一応PIDをチェックし、自分一致したらそのウィンドウを使うことにして終了
             if (gameWindow.ProcessId == pid) return gameWindow;
+
 #endif
 
-            // 現存するウィンドウ一式を取得
-            WindowHandle[] handles = FindWindows();
-            foreach (WindowHandle window in handles)
-            {
-                //Debug.Log(window);
+            // IL2CPP では FindWindows() を利用できないため、アクティブなウィンドウを取得する方法にいったん戻す
+            hwnd = WinApi.GetActiveWindow();
+            if (hwnd == IntPtr.Zero) return null;
 
-                // PIDが一致するものを検索
-                if (window.ProcessId == pid)
-                {
-                    return window;
-                }
-            }
-            return null;
+            WindowHandle window = new WindowHandle(hwnd);
+            if (window.ProcessId != pid) return null;
+
+            return window;
+
+
+            //// 現存するウィンドウ一式を取得
+            //WindowHandle[] handles = FindWindows();
+            //foreach (WindowHandle window in handles)
+            //{
+            //    Debug.Log(window);
+
+            //    // PIDが一致するものを検索
+            //    if (window.ProcessId == pid)
+            //    {
+            //        return window;
+            //    }
+            //}
+            //return null;
         }
 
         /// <summary>
         /// ウィンドウタイトルを元にハンドルを取得
         /// </summary>
-        /// <param name="title">Title.</param>
+        /// <returns>Null if failed</returns>
+        /// <param name="title">Window title</param>
         static public WindowHandle FindWindowByTitle(string title)
         {
             IntPtr hwnd = WinApi.FindWindow(null, title);
@@ -388,8 +406,8 @@ namespace Kirurobo
         /// <summary>
         /// ウィンドウクラスを元にハンドルを取得
         /// </summary>
-        /// <returns><c>true</c>, if handle by title was found, <c>false</c> otherwise.</returns>
-        /// <param name="classname">Title.</param>
+        /// <returns>Null if failed</returns>
+        /// <param name="classname">Window class name</param>
         static public WindowHandle FindWindowByClass(string classname)
         {
             IntPtr hwnd = WinApi.FindWindow(classname, null);
@@ -399,26 +417,36 @@ namespace Kirurobo
             return window;
         }
 
+        [MonoPInvokeCallback(typeof(WinApi.EnumWindowsDelegate))]
+        private static bool EnumCallback(IntPtr hWnd, IntPtr lParam)
+        {
+            StringBuilder sb = new StringBuilder(1024);
+            if (WinApi.IsWindow(hWnd) && WinApi.GetWindowText(hWnd, sb, sb.Capacity) != 0)
+            {
+                WindowHandle window = new WindowHandle(hWnd)
+                {
+                    Title = sb.ToString()
+                };
+                windowList.Add(window);
+            }
+            return true;
+        }
+
         /// <summary>
-        /// ウィンドウタイトルを元にハンドルを取得
+        /// 現在存在するすべてのトップレベルウィンドウを取得
+        /// ※ IL2CPP では今のところ利用できません
         /// </summary>
-        /// <returns><c>true</c>, if handle by title was found, <c>false</c> otherwise.</returns>
-        /// <param name="title">Title.</param>
         static public WindowHandle[] FindWindows()
         {
-            List<WindowHandle> windowList = new List<WindowHandle>();
-
-            WinApi.EnumWindows(new WinApi.EnumWindowsDelegate(delegate (IntPtr hWnd, long lParam)
+            if (myEnumWindowsDelegate == null)
             {
-                StringBuilder sb = new StringBuilder(1024);
-                if (WinApi.IsWindow(hWnd) && WinApi.GetWindowText(hWnd, sb, sb.Capacity) != 0)
-                {
-                    WindowHandle window = new WindowHandle(hWnd);
-                    window.Title = sb.ToString();
-                    windowList.Add(window);
-                }
-                return 1;   // 列挙を継続するため0以外を返す
-            }), 0);
+                myEnumWindowsDelegate = new WinApi.EnumWindowsDelegate(EnumCallback);
+            }
+
+            windowList.Clear();
+
+            //WinApi.EnumWindows(new WinApi.EnumWindowsDelegate(delegate (IntPtr hWnd, IntPtr lParam)
+            WinApi.EnumWindows( myEnumWindowsDelegate, IntPtr.Zero);
 
             return windowList.ToArray();
         }
@@ -613,7 +641,7 @@ namespace Kirurobo
             return file;
         }
 
-        #region マウス操作関連
+#region マウス操作関連
         /// <summary>
         /// マウスカーソルを指定座標へ移動させる
         /// </summary>
@@ -677,9 +705,9 @@ namespace Kirurobo
                 0, 0, 0, IntPtr.Zero
                 );
         }
-        #endregion
+#endregion
 
-        #region キー操作関連
+#region キー操作関連
         /// <summary>
         /// キーコードを送ります
         /// </summary>
@@ -687,9 +715,9 @@ namespace Kirurobo
         {
             WinApi.PostMessage(this.hWnd, WinApi.WM_IME_CHAR, (long)code, IntPtr.Zero);
         }
-        #endregion
+#endregion
 
-        #region ファイルドロップ関連
+#region ファイルドロップ関連
         /// <summary>
         /// ファイルドロップ時に発生するイベント
         /// </summary>
@@ -874,9 +902,9 @@ namespace Kirurobo
             RestoreWindowState();
         }
 
-        #endregion
+#endregion
 
-        #region File open dialog
+#region File open dialog
 
         public string ShowOpenFileDialog(string filter = "All files|*.*")
         {
@@ -904,7 +932,7 @@ namespace Kirurobo
             }
             return null;
         }
-        #endregion
+#endregion
     }
 
 }
