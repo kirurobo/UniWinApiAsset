@@ -130,6 +130,30 @@ namespace Kirurobo
         [ReadOnly, Tooltip("Pixel color under the mouse pointer. (Read only)")]
         public Color pickedColor;
 
+        public Color KeyColor = new Color32(2, 1, 0, 0);
+        //{
+        //  get { return ((uniWin != null) ? Color.black : uniWin.KeyColor); }
+        //  set { if (uniWin != null) { uniWin.KeyColor = value; }; }
+        //}
+
+        public UniWinApi.Constants.TransparentType TransparentType = UniWinApi.Constants.TransparentType.Alpha;
+        //{
+        //  get { return ((uniWin != null) ? UniWinApi.Constants.TransparentType.Alpha : uniWin.TransparentType); }
+        //  set {
+        //      if (uniWin != null) {
+        //          if (isTransparent && (uniWin.TransparentType != value))
+        //          {
+        //              isTransparent = false;
+        //              uniWin.TransparentType = value;
+        //              isTransparent = true;
+        //          }
+        //          else
+        //          {
+        //              uniWin.TransparentType = value;
+        //          }
+        //      };
+        //  }
+        //}
 
         private bool isDragging = false;
         private Vector2 lastMousePosition;
@@ -286,7 +310,7 @@ namespace Kirurobo
         /// </summary>
         void UpdateClickThrough()
         {
-            if (_isClickThrough)
+            if (_isClickThrough && this.TransparentType != UniWinApi.Constants.TransparentType.KeyColor)
             {
                 if (onOpaquePixel)
                 {
@@ -316,6 +340,26 @@ namespace Kirurobo
                 MyPostRender(currentCamera);
             }
             yield return null;
+        }
+
+
+        public Texture2D screenTexture;
+        public void GetScreenCapture()
+        {
+            //screenTexture = ScreenCapture.CaptureScreenshotAsTexture();
+
+            if (screenTexture== null || screenTexture.width != Screen.width || screenTexture.height != Screen.height)
+            {
+                CreateTexture();
+            }
+            screenTexture.ReadPixels(new Rect(0, 0, Screen.width, Screen.height), 0, 0);
+            screenTexture.Apply();
+        }
+        public Material material;
+
+        private void CreateTexture()
+        {
+            screenTexture = new Texture2D(Screen.width, Screen.height, TextureFormat.RGBA32, false);
         }
 
         /// <summary>
@@ -354,6 +398,8 @@ namespace Kirurobo
             {
                 onOpaquePixel = false;
             }
+
+            GetScreenCapture();
         }
 
         /// <summary>
@@ -391,7 +437,14 @@ namespace Kirurobo
             if (isTransparent)
             {
                 currentCamera.clearFlags = CameraClearFlags.SolidColor;
-                currentCamera.backgroundColor = Color.clear;
+                if (this.TransparentType == UniWinApi.Constants.TransparentType.KeyColor)
+                {
+                    currentCamera.backgroundColor = this.KeyColor;
+                }
+                else
+                {
+                    currentCamera.backgroundColor = Color.clear;
+                }
             }
             else
             {
@@ -413,6 +466,9 @@ namespace Kirurobo
 
             if (uniWin != null)
             {
+                uniWin.KeyColor = this.KeyColor;
+                uniWin.TransparentType = this.TransparentType;
+
                 uniWin.EnableTransparent(transparent);
             }
             UpdateClickThrough();

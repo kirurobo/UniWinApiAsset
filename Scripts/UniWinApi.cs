@@ -89,6 +89,20 @@ namespace Kirurobo
             }
         }
 
+        [Serializable]
+        public class Constants
+        {
+            /// <summary>
+            /// 非矩形ウィンドウ実現の方式
+            /// </summary>
+            public enum TransparentType
+            {
+                None,
+                Alpha,
+                KeyColor,
+            }
+        }
+
 
         /// <summary>
         /// このウィンドウのハンドル
@@ -118,6 +132,29 @@ namespace Kirurobo
         /// </summary>
         public bool IsTopmost { get { return (IsActive && _isTopmost); } }
         private bool _isTopmost = false;
+
+        /// <summary>
+        /// 透過方式を取得／設定
+        /// </summary>
+        public Constants.TransparentType TransparentType
+        {
+            get { return _transparentType; }
+            set
+            {
+                if (_transparentType != value)
+                {
+                    // 切り替えられたときの処理
+                }
+                _transparentType = value;
+            }
+        }
+        //public Constants.TransparentType TransparentType = Constants.TransparentType.Alpha;
+        private Constants.TransparentType _transparentType = Constants.TransparentType.Alpha;
+
+        /// <summary>
+        /// 単色透過の場合のキー色
+        /// </summary>
+        public Color KeyColor = new Color32(2, 1, 0, 0);
 
         /// <summary>
         /// ウィンドウ位置
@@ -172,6 +209,7 @@ namespace Kirurobo
         /// </summary>
         public UniWinApi()
         {
+            _transparentType = TransparentType;
         }
 
         /// <summary>
@@ -471,7 +509,18 @@ namespace Kirurobo
                 // 枠無しウィンドウにする
                 EnableBorderless(true);
 
-                EnableTransparentByDWM();
+                switch (_transparentType)
+                {
+                    case Constants.TransparentType.Alpha:
+                        //DisableTransparentByLayered();
+                        EnableTransparentByDWM();
+                        break;
+
+                    case Constants.TransparentType.KeyColor:
+                        DisableTransparentByDWM();
+                        //EnableTransparentByLayered();
+                        break;
+                }
 
                 // ウィンドウ再描画
                 WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
@@ -479,7 +528,16 @@ namespace Kirurobo
             }
             else
             {
-                DisableTransparentByDWM();
+                switch (_transparentType)
+                {
+                    case Constants.TransparentType.Alpha:
+                        DisableTransparentByDWM();
+                        break;
+
+                    case Constants.TransparentType.KeyColor:
+                        DisableTransparentByLayered();
+                        break;
+                }
 
                 // ウィンドウスタイルを戻す
                 EnableBorderless(false);
@@ -493,6 +551,34 @@ namespace Kirurobo
 
             // ウィンドウ再描画
             WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
+        }
+
+        private void EnableTransparentByLayered()
+        {
+
+            // 指定色での透過とする
+            Color32 color = KeyColor;
+            WinApi.COLORREF keyColorRef = new WinApi.COLORREF(color.r, color.g, color.b);
+            WinApi.SetLayeredWindowAttributes(hWnd, keyColorRef, 0xFF, WinApi.LWA_COLORKEY);
+            //WinApi.SetLayeredWindowAttributes(hWnd, new WinApi.COLORREF(0), 0xCC, WinApi.LWA_ALPHA);
+
+            // レイヤードウィンドウにする
+            this.CurrentWindowExStyle |= WinApi.WS_EX_LAYERED;
+            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+        }
+
+        private void DisableTransparentByLayered()
+        {
+            // 指定色でなく全体の透過率設定状態にする
+            WinApi.SetLayeredWindowAttributes(hWnd, new WinApi.COLORREF(0), 0xFF, WinApi.LWA_ALPHA);
+
+            // レイヤードウィンドウをやめる
+            this.CurrentWindowExStyle &= ~WinApi.WS_EX_LAYERED;
+            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+
+            // レイヤードウィンドウをやめる
+            this.CurrentWindowExStyle |= WinApi.WS_EX_LAYERED;
+            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
         }
 
         private void EnableTransparentByDWM()
@@ -519,12 +605,22 @@ namespace Kirurobo
             if (!IsActive) return;
 
 #if UNITY_EDITOR
-            // エディタの場合は枠無しにしない
+            if (enable)
+            {
+                // 枠無しウィンドウにする
+                this.CurrentWindowStyle = this.CurrentWindowStyle & ~(WinApi.WS_CAPTION | WinApi.WS_THICKFRAME);
+                WinApi.SetWindowLong(hWnd, WinApi.GWL_STYLE, this.CurrentWindowStyle);
+            }
+            else
+            {
+                // ウィンドウスタイルを戻す
+                this.CurrentWindowStyle = this.OriginalWindowStyle;
+                WinApi.SetWindowLong(hWnd, WinApi.GWL_STYLE, this.CurrentWindowStyle);
+            }
 #else
         // エディタでなければ枠無しに設定
         if (enable) {
             // 枠無しウィンドウにする
-            //long val = WinApi.GetWindowLong (hWnd, WinApi.GWL_STYLE) & ~WinApi.WS_OVERLAPPEDWINDOW;
             long val = WinApi.WS_VISIBLE | WinApi.WS_POPUP;
             //this.CurrentWindowStyle = this.OriginalWindowStyle & ~WinApi.WS_OVERLAPPEDWINDOW;
             this.CurrentWindowStyle = val;
@@ -548,8 +644,8 @@ namespace Kirurobo
 #if UNITY_EDITOR
             // エディタの場合は操作の透過はやめておく
 #else
-        // エディタでなければ操作を透過
-        if (isClickThrough)
+            // エディタでなければ操作を透過
+            if (isClickThrough)
         {
             long exstyle = this.CurrentWindowExStyle;
             exstyle |= WinApi.WS_EX_TRANSPARENT;
@@ -594,23 +690,6 @@ namespace Kirurobo
             if (!IsActive) return;
             WinApi.ShowWindow(hWnd, WinApi.SW_RESTORE);
             this.CurrentWindowStyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_STYLE);
-        }
-
-        /// <summary>
-        /// Get the Unity executable file name
-        /// </summary>
-        /// <description>http://gamedev.stackexchange.com/questions/68784/how-do-i-access-the-product-name-in-unity-4</description>
-        /// <returns>The project name.</returns>
-        [Obsolete]
-        public static string GetUnityProcessName()
-        {
-            string[] fileOrFolders = Application.dataPath.Split('/');
-            string file = fileOrFolders[fileOrFolders.Length - 1];
-            if (file.Substring(file.Length - 4).ToLower() == ".exe")
-            {
-                file = file.Substring(0, file.Length - 4);
-            }
-            return file;
         }
 
         #region マウス操作関連
@@ -906,5 +985,4 @@ namespace Kirurobo
         }
         #endregion
     }
-
 }

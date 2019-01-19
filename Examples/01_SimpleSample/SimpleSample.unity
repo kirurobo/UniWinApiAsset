@@ -203,16 +203,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 677645775}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dd945dac262446d4a8623968cede723b, type: 3}
+  m_Script: {fileID: 11500000, guid: 13bcdf69fdb73ac4388722569c356a3f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _isTransparent: 1
+  _isTransparent: 0
   _isTopmost: 0
   _isMaximized: 0
   _isMinimized: 0
   _enableFileDrop: 0
-  enableDragMove: 1
+  enableDragMove: 0
   pickedColor: {r: 0, g: 0, b: 0, a: 0}
+  KeyColor: {r: 0.007843138, g: 0.003921569, b: 0, a: 0}
+  TransparentType: 1
+  screenTexture: {fileID: 0}
+  material: {fileID: 2100000, guid: 6bc594267c9bccc449b9e863f81b1063, type: 2}
 --- !u!4 &677645777
 Transform:
   m_ObjectHideFlags: 0
