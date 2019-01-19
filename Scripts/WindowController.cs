@@ -364,7 +364,10 @@ namespace Kirurobo
             // ウィンドウが確かではないとしておく
             isWindowChecked = false;
 
-            // 自分のウィンドウを取得
+            // 現在このウィンドウがアクティブでなければ、取得はやめておく
+            if (!Application.isFocused) return;
+
+            // 今アクティブなウィンドウを取得
             var window = UniWinApi.FindWindow();
             if (window == null) return;
 
@@ -377,6 +380,39 @@ namespace Kirurobo
             SetMinimized(_isMinimized);
             SetTransparent(_isTransparent);
             if (_enableFileDrop) BeginFileDrop();
+        }
+
+        /// <summary>
+        /// ウィンドウへのフォーカスが変化したときに呼ばれる
+        /// </summary>
+        /// <param name="focus"></param>
+        private void OnApplicationFocus(bool focus)
+        {
+            if (focus)
+            {
+                // もしウィンドウハンドル取得に失敗していたら再取得
+                if (!uniWin.IsActive)
+                {
+                    FindMyWindow();
+                }
+
+                // アクティブウィンドウを監視して
+                if (!isWindowChecked)
+                {
+                    if (uniWin.CheckActiveWindow())
+                    {
+                        isWindowChecked = true; // どうやら正しくウィンドウをつかめているよう
+                    }
+                    else
+                    {
+                        // ウィンドウが違っているようなので、もう一度アクティブウィンドウを取得
+                        uniWin.Reset();
+                        uniWin.Dispose();
+                        uniWin = new UniWinApi();
+                        FindMyWindow();
+                    }
+                }
+            }
         }
 
         /// <summary>
