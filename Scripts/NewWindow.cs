@@ -7,7 +7,8 @@ public class NewWindow : EditorWindow {
 
     static NewWindow myWindow;
 
-    static string originalBackground;
+    static readonly string colorPrefName = "Playmode tint";
+    static string originalPlaymodeTint;
 
     [MenuItem("Tools/Preview")]
     static void Preview()
@@ -16,22 +17,16 @@ public class NewWindow : EditorWindow {
 
         if (!myWindow)
         {
-            originalBackground = EditorPrefs.GetString("Background");
-            Debug.Log(originalBackground);
-            EditorPrefs.SetString("Background", "Background;0;0;0;0");
+            originalPlaymodeTint = EditorPrefs.GetString(colorPrefName);
+            Debug.Log(originalPlaymodeTint);
+            EditorPrefs.SetString(colorPrefName, "Background;0;0;0;0");
 
             myWindow = CreateInstance<NewWindow>();
         }
+
         myWindow.ShowUtility();
         //myWindow.Show();
- 
-        //SceneView.onSceneGUIDelegate += (sceneView) =>
-        //{
-        //    var cameras = Object.FindObjectOfType<Camera>();
-        //    Handles.BeginGUI();
-        //    GUI.skin = EditorGUIUtility.GetBuiltinSkin(EditorSkin.Inspector);
-        //};
-    }
+     }
 
     // 参考 http://baba-s.hatenablog.com/entry/2017/09/17/135018
     public static EditorWindow GetGameView()
@@ -43,7 +38,7 @@ public class NewWindow : EditorWindow {
     }
 
     private Texture2D texture;
-
+    private GUIStyle style;
 
     private Kirurobo.WindowController controller;
 
@@ -53,6 +48,13 @@ public class NewWindow : EditorWindow {
         //{
         //    CreateTexture();
         //}
+
+        if (texture == null)
+        {
+            texture = Texture2D.blackTexture;
+        }
+        GUI.skin.window.margin = new RectOffset(50, 50, 50, 100);
+        GUI.skin.window.normal.textColor = Color.red;
 
         if (Application.isPlaying)
         {
@@ -64,6 +66,11 @@ public class NewWindow : EditorWindow {
             var tex = controller.screenTexture;
             if (tex != null)
             {
+
+                //GUIStyle gstyle = new GUIStyle();
+                //gstyle.normal.background = tex;
+                //GUI.skin.window.normal.background = tex;
+
                 if (position.width != tex.width || position.height != tex.height)
                 {
                     position = new Rect(position.x, position.y, tex.width, tex.height);
@@ -72,13 +79,13 @@ public class NewWindow : EditorWindow {
                 //tex.ReadPixels(new Rect(0, 0, Screen.width, Screen.height), 0, 0);
                 //tex.Apply();
 
-                //EditorGUI.DrawPreviewTexture(new Rect(0, 0, position.width, position.height), tex);
-                //GUI.DrawTexture(new Rect(0, 0, position.width, position.height), tex, ScaleMode.StretchToFill, true);
-                EditorGUI.DrawPreviewTexture(new Rect(0, 0, position.width, position.height), tex, controller.material);
-                //EditorGUI.DrawPreviewTexture(new Rect(10, 10, position.width / 2, position.height / 2), tex);
+                //EditorGUI.DrawPreviewTexture(new Rect(0, 0, position.width, position.height), tex, controller.material);
+                GUI.DrawTexture(new Rect(0, 0, position.width, position.height), tex, ScaleMode.ScaleToFit, true);
             }
             //Object.Destroy(tex);
         }
+
+        GUI.Label(new Rect(0, 0, 100, 40), "Preview");
     }
 
     private void Update()
@@ -88,7 +95,7 @@ public class NewWindow : EditorWindow {
 
     private void OnDestroy()
     {
-        EditorPrefs.SetString("Background", originalBackground);
+        EditorPrefs.SetString(colorPrefName, originalPlaymodeTint);
     }
 
     private void CreateTexture()
