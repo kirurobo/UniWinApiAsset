@@ -52,6 +52,7 @@ namespace Kirurobo
                 {
                     ClassName = sb.ToString();
                 }
+                Debug.Log("CLASS:" + ClassName);
 
                 // ウィンドウタイトルを取得
                 sb.Length = 0;  // StringBuilder内を消去
@@ -59,24 +60,34 @@ namespace Kirurobo
                 {
                     Title = sb.ToString();
                 }
+                Debug.Log("TITLE:" + Title);
 
-                // プロセス名を取得
+                // プロセスIDを取得
                 IntPtr pid;
                 WinApi.GetWindowThreadProcessId(hWnd, out pid);
+                ProcessId = pid.ToInt32();
+                Debug.Log("PID: " + ProcessId);
 
+#if ENABLE_IL2CPP
+                // Unity 2018.2.8f1 にて IL2CPP の場合、プロセス名取得時にクラッシュする。
+                //   .NET 4 の場合は即クラッシュした。
+                //   .NET 3.5 のときは即ではないがやはりクラッシュした。
+                ProcessName = "";
+#else
+                // プロセス名を取得
                 // GetProcessNyId(PID) で指定PIDが存在しない例外になる場合があるため try {} を使用
                 try
                 {
-                    System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById(pid.ToInt32());
+                    System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById(ProcessId);
                     ProcessName = p.ProcessName;
-                    //ProcessId = p.Id;	// = pid; でおそらく同様
                 }
                 catch
                 {
                     ProcessName = "";
+                    Debug.Log("Getting process name by PID " + ProcessId + " failed");
                 }
-                ProcessId = pid.ToInt32();
-                //Debug.Log("PID: " + pid + ", Name: " + ProcessName);
+#endif
+                Debug.Log("NAME: " + ProcessName);
             }
 
             /// <summary>
@@ -364,29 +375,30 @@ namespace Kirurobo
 
 #endif
 
-            // IL2CPP では FindWindows() を利用できないため、アクティブなウィンドウを取得する方法にいったん戻す
-            hwnd = WinApi.GetActiveWindow();
-            if (hwnd == IntPtr.Zero) return null;
+            //// IL2CPP では FindWindows() を利用できないため、アクティブなウィンドウを取得する方法にいったん戻す
+            //hwnd = WinApi.GetActiveWindow();
+            //if (hwnd == IntPtr.Zero) return null;
+            //Debug.Log("Active HWND:" + hwnd);
 
-            WindowHandle window = new WindowHandle(hwnd);
-            if (window.ProcessId != pid) return null;
+            //WindowHandle window = new WindowHandle(hwnd);
+            //if (window.ProcessId != pid) return null;
 
-            return window;
+            //return window;
 
 
-            //// 現存するウィンドウ一式を取得
-            //WindowHandle[] handles = FindWindows();
-            //foreach (WindowHandle window in handles)
-            //{
-            //    Debug.Log(window);
+            // 現存するウィンドウ一式を取得
+            WindowHandle[] handles = FindWindows();
+            foreach (WindowHandle window in handles)
+            {
+                Debug.Log(window);
 
-            //    // PIDが一致するものを検索
-            //    if (window.ProcessId == pid)
-            //    {
-            //        return window;
-            //    }
-            //}
-            //return null;
+                // PIDが一致するものを検索
+                if (window.ProcessId == pid)
+                {
+                    return window;
+                }
+            }
+            return null;
         }
 
         /// <summary>
