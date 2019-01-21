@@ -11,7 +11,6 @@ using System;
 using System.Text;
 using AOT;
 using System.Collections.Generic;
-using System.Collections;
 
 namespace Kirurobo
 {
@@ -65,9 +64,11 @@ namespace Kirurobo
                 Debug.Log("TITLE:" + Title);
 
                 // プロセスIDを取得
-                IntPtr pid;
-                WinApi.GetWindowThreadProcessId(hWnd, out pid);
-                ProcessId = pid.ToInt32();
+                //IntPtr pid;
+                ulong pid;
+                WinApi.GetWindowThreadProcessId(hWnd, out pid);     // IL2CPP かつ x86 だとクラッシュ？
+                //ProcessId = pid.ToInt32();
+                ProcessId = (int)pid;
                 Debug.Log("PID: " + ProcessId);
 
 #if ENABLE_IL2CPP
@@ -180,7 +181,7 @@ namespace Kirurobo
         private static List<UniWinApi> instances = new List<UniWinApi>();
 
         private static WinApi.EnumWindowsDelegate myEnumWindowsDelegate;
-        private static List<WindowHandle> windowList = new List<WindowHandle>();
+        private static List<IntPtr> hWndList = new List<IntPtr>();
 
 
         /// <summary>
@@ -355,8 +356,6 @@ namespace Kirurobo
             int pid = process.Id;
             Debug.Log("PID: " + pid);
 
-            IntPtr hwnd;
-
 #if UNITY_EDITOR
             // Gameビューを取得
             // 参考： https://qiita.com/MARQUE/items/292c9080a686d95af1a5
@@ -365,7 +364,7 @@ namespace Kirurobo
             // Gameビューににフォーカスを与えてから、アクティブなウィンドウを取得
             gameViewWin.Focus();
             //System.Threading.Thread.Sleep(100);
-            hwnd = WinApi.GetActiveWindow();
+            IntPtr hwnd = WinApi.GetActiveWindow();
 
             var rootHwnd = hwnd;
             rootHwnd = WinApi.GetAncestor(hwnd, WinApi.GA_ROOT);
@@ -432,17 +431,9 @@ namespace Kirurobo
         }
 
         [MonoPInvokeCallback(typeof(WinApi.EnumWindowsDelegate))]
-        private static bool EnumWindowCallback(IntPtr hWnd, ArrayList lParam)
+        private static bool EnumCallback(IntPtr hWnd, IntPtr lParam)
         {
-            StringBuilder sb = new StringBuilder(1024);
-            if (WinApi.IsWindow(hWnd) && WinApi.GetWindowText(hWnd, sb, sb.Capacity) != 0)
-            {
-                WindowHandle window = new WindowHandle(hWnd)
-                {
-                    Title = sb.ToString()
-                };
-                windowList.Add(window);
-            }
+            hWndList.Add(hWnd);
             return true;
         }
 
@@ -451,18 +442,24 @@ namespace Kirurobo
         /// </summary>
         static public WindowHandle[] FindWindows()
         {
-
-            ArrayList hwndList = WinApi.GetWindows();
-
-            if (hwndList.Count < 1) return null;
-
-            WindowHandle[] list = new WindowHandle[hwndList.Count];
-            int index = 0;
-            foreach (IntPtr hwnd in hwndList)
+            if (myEnumWindowsDelegate == null)
             {
-                list[index++] = new WindowHandle(hwnd);
+                myEnumWindowsDelegate = new WinApi.EnumWindowsDelegate(EnumCallback);
             }
-            return list;
+
+            hWndList.Clear();
+            //WinApi.EnumWindows(new WinApi.EnumWindowsDelegate(delegate (IntPtr hWnd, IntPtr lParam)
+            WinApi.EnumWindows(myEnumWindowsDelegate, IntPtr.Zero);
+
+            List<WindowHandle> windowList = new List<WindowHandle>();
+            foreach (IntPtr hwnd in hWndList)
+            {
+                if (WinApi.IsWindow(hwnd)) {
+                    WindowHandle window = new WindowHandle(hwnd);
+                    windowList.Add(window);
+                }
+            }
+            return windowList.ToArray();
         }
 
         /// <summary>
