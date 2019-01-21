@@ -11,6 +11,7 @@ using System;
 using System.Text;
 using AOT;
 using System.Collections.Generic;
+using System.Collections;
 
 namespace Kirurobo
 {
@@ -44,21 +45,22 @@ namespace Kirurobo
                 hWnd = hwnd;
                 if (hWnd == IntPtr.Zero) return;
 
+                // StringBufferの大きさ
                 const int len = 1024;
-                StringBuilder sb = new StringBuilder(len);
 
                 // クラス名を取得
-                if (WinApi.GetClassName(hWnd, sb, len) > 0)
+                StringBuilder sbClass = new StringBuilder(len);
+                if (WinApi.GetClassName(hWnd, sbClass, len) > 0)
                 {
-                    ClassName = sb.ToString();
+                    ClassName = sbClass.ToString();
                 }
                 Debug.Log("CLASS:" + ClassName);
 
                 // ウィンドウタイトルを取得
-                sb.Length = 0;  // StringBuilder内を消去
-                if (WinApi.GetWindowText(hWnd, sb, len) > 0)
+                StringBuilder sbTitle = new StringBuilder(len);
+                if (WinApi.GetWindowText(hWnd, sbTitle, len) > 0)
                 {
-                    Title = sb.ToString();
+                    Title = sbTitle.ToString();
                 }
                 Debug.Log("TITLE:" + Title);
 
@@ -430,7 +432,7 @@ namespace Kirurobo
         }
 
         [MonoPInvokeCallback(typeof(WinApi.EnumWindowsDelegate))]
-        private static bool EnumCallback(IntPtr hWnd, IntPtr lParam)
+        private static bool EnumWindowCallback(IntPtr hWnd, ArrayList lParam)
         {
             StringBuilder sb = new StringBuilder(1024);
             if (WinApi.IsWindow(hWnd) && WinApi.GetWindowText(hWnd, sb, sb.Capacity) != 0)
@@ -446,21 +448,21 @@ namespace Kirurobo
 
         /// <summary>
         /// 現在存在するすべてのトップレベルウィンドウを取得
-        /// ※ IL2CPP では今のところ利用できません
         /// </summary>
         static public WindowHandle[] FindWindows()
         {
-            if (myEnumWindowsDelegate == null)
+
+            ArrayList hwndList = WinApi.GetWindows();
+
+            if (hwndList.Count < 1) return null;
+
+            WindowHandle[] list = new WindowHandle[hwndList.Count];
+            int index = 0;
+            foreach (IntPtr hwnd in hwndList)
             {
-                myEnumWindowsDelegate = new WinApi.EnumWindowsDelegate(EnumCallback);
+                list[index++] = new WindowHandle(hwnd);
             }
-
-            windowList.Clear();
-
-            //WinApi.EnumWindows(new WinApi.EnumWindowsDelegate(delegate (IntPtr hWnd, IntPtr lParam)
-            WinApi.EnumWindows( myEnumWindowsDelegate, IntPtr.Zero);
-
-            return windowList.ToArray();
+            return list;
         }
 
         /// <summary>
