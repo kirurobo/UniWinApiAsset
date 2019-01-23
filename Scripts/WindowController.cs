@@ -7,6 +7,10 @@
 
 using System.Collections;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+using System.Reflection;
+#endif
 
 namespace Kirurobo
 {
@@ -196,6 +200,14 @@ namespace Kirurobo
 
             // 自分のウィンドウを取得
             FindMyWindow();
+
+#if UNITY_EDITOR
+            // エディタのウィンドウ配置が変化した際の呼び出し
+            EditorApplicationUtility.windowsReordered += () => {
+                this.isWindowChecked = false;   // ウィンドウが不確かであるとする
+                Debug.Log("Editor windows reordered");
+            };
+#endif
         }
 
         void Start()
@@ -212,6 +224,13 @@ namespace Kirurobo
         // Update is called once per frame
         void Update()
         {
+            // 自ウィンドウ取得状態が不確かなら探しなおす
+            //  マウス押下が取れるのはすなわちフォーカスがあるとき
+            if (Input.GetMouseButtonDown(0))
+            {
+                UpdateWindow();
+            }
+
             // キー、マウス操作の下ウィンドウへの透過状態を更新
             UpdateClickThrough();
 
@@ -394,41 +413,51 @@ namespace Kirurobo
         }
 
         /// <summary>
+        /// 自分のウィンドウハンドルが不確かならば探しなおす
+        /// </summary>
+        private void UpdateWindow()
+        {
+            if (uniWin == null) return;
+
+            // もしウィンドウハンドル取得に失敗していたら再取得
+            if (!uniWin.IsActive)
+            {
+                //Debug.Log("Window is not active");
+                FindMyWindow();
+            }
+            else if (!isWindowChecked)
+            {
+                // 自分自身のウィンドウか未確認の場合
+
+                // 今アクティブなウィンドウが自分自身かをチェック
+                if (uniWin.CheckActiveWindow())
+                {
+                    isWindowChecked = true; // どうやら正しくウィンドウをつかめているよう
+                }
+                else
+                {
+                    // ウィンドウが違っているようなので、もう一度アクティブウィンドウを取得
+                    uniWin.Reset();
+                    uniWin.Dispose();
+                    uniWin = new UniWinApi();
+                    FindMyWindow();
+                }
+            }
+        }
+
+        /// <summary>
         /// ウィンドウへのフォーカスが変化したときに呼ばれる
         /// </summary>
         /// <param name="focus"></param>
         private void OnApplicationFocus(bool focus)
         {
-            Debug.Log("Focus:" + focus);
-
-            if (uniWin == null) return;
+            //Debug.Log("Focus:" + focus);
 
             if (focus)
             {
-                // もしウィンドウハンドル取得に失敗していたら再取得
-                if (!uniWin.IsActive)
-                {
-                    Debug.Log("Window is not active");
-                    FindMyWindow();
-                }
-                else if (!isWindowChecked)
-                {
-                    // 自分自身のウィンドウか確認できていなかった場合
-
-                    if (uniWin.CheckActiveWindow())
-                    {
-                        isWindowChecked = true; // どうやら正しくウィンドウをつかめているよう
-                    }
-                    else
-                    {
-                        // ウィンドウが違っているようなので、もう一度アクティブウィンドウを取得
-                        uniWin.Reset();
-                        uniWin.Dispose();
-                        uniWin = new UniWinApi();
-                        FindMyWindow();
-                    }
-                }
+                UpdateWindow();
             }
+
         }
 
         /// <summary>
@@ -585,4 +614,37 @@ namespace Kirurobo
             }
         }
     }
+
+
+#if UNITY_EDITOR
+    // エディタ実行時専用
+    // ゲームビューが閉じたり開いたりされたときの対応
+
+    // 参考 http://baba-s.hatenablog.com/entry/2017/12/04/090000#Unity-%E3%82%A8%E3%83%87%E3%82%A3%E3%82%BF%E3%81%AE%E5%90%84%E3%82%A6%E3%82%A3%E3%83%B3%E3%83%89%E3%82%A6%E3%81%AE%E4%BD%8D%E7%BD%AE%E3%81%8C%E5%A4%89%E6%9B%B4%E3%81%95%E3%82%8C%E3%81%9F%E6%99%82
+    [InitializeOnLoad]
+    public static class EditorApplicationUtility
+    {
+        private const BindingFlags BINDING_ATTR = BindingFlags.Static | BindingFlags.Instance | BindingFlags.NonPublic;
+
+        private static readonly FieldInfo m_info = typeof(EditorApplication).GetField("windowsReordered", BINDING_ATTR);
+
+        /// <summary>
+        /// エディタウィンドウ配置変化時に呼ばれる
+        /// </summary>
+        public static EditorApplication.CallbackFunction windowsReordered
+        {
+            get
+            {
+                return m_info.GetValue(null) as EditorApplication.CallbackFunction;
+            }
+            set
+            {
+                var functions = m_info.GetValue(null) as EditorApplication.CallbackFunction;
+                functions += value;
+                m_info.SetValue(null, functions);
+            }
+        }
+    }
+#endif
+
 }

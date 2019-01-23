@@ -12,6 +12,8 @@ namespace Kirurobo
     [CustomEditor(typeof(WindowController))]
     public class WindowControllerEditor : Editor
     {
+        private EditorWindow gameViewWindow;
+
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
@@ -66,6 +68,19 @@ namespace Kirurobo
                 }
             }
 #endif
+        }
+
+        // 参考 http://baba-s.hatenablog.com/entry/2017/09/17/135018
+        /// <summary>
+        /// ゲームビューのEditorWindowを取得
+        /// </summary>
+        /// <returns></returns>
+        public static EditorWindow GetGameView()
+        {
+            var assembly = typeof(EditorWindow).Assembly;
+            var type = assembly.GetType("UnityEditor.GameView");
+            var gameView = EditorWindow.GetWindow(type);
+            return gameView;
         }
     }
 
