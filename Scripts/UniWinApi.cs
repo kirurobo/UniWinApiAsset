@@ -472,6 +472,14 @@ namespace Kirurobo
         }
 
         /// <summary>
+        /// 自分のウィンドウにフォーカスを与える
+        /// </summary>
+        public void SetFocus()
+        {
+            if (IsActive) WinApi.SetFocus(hWnd);
+        }
+
+        /// <summary>
         /// ウィンドウスタイルを監視して、替わっていれば戻す
         /// </summary>
         public void Update()

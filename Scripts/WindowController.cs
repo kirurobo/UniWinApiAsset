@@ -154,8 +154,8 @@ namespace Kirurobo
         /// </summary>
         public event UniWinApi.FilesDropped OnFilesDropped
         {
-            add { uniWin.OnFilesDropped += value; }
-            remove { uniWin.OnFilesDropped -= value; }
+            add { if (uniWin != null) { uniWin.OnFilesDropped += value; } }
+            remove { if (uniWin != null) { uniWin.OnFilesDropped -= value; } }
         }
 
         /// <summary>
@@ -192,33 +192,37 @@ namespace Kirurobo
                 originalCameraBackground = currentCamera.backgroundColor;
 
             }
-            // 描画色抽出用テクスチャ
+
+            // マウス下描画色抽出用テクスチャを準備
             colorPickerTexture = new Texture2D(1, 1, TextureFormat.ARGB32, false);
 
+#if (UNITY_WIN || UNITY_STANDALONE_WIN)
             // ウィンドウ制御用のインスタンス作成
             uniWin = new UniWinApi();
 
             // 自分のウィンドウを取得
             FindMyWindow();
-
+#endif
 #if UNITY_EDITOR
             // エディタのウィンドウ配置が変化した際の呼び出し
             EditorApplicationUtility.windowsReordered += () => {
                 this.isWindowChecked = false;   // ウィンドウが不確かであるとする
-                Debug.Log("Editor windows reordered");
+                //Debug.Log("Editor windows reordered");
             };
 #endif
         }
 
         void Start()
         {
-            // マウスカーソル下の色を取得させるコルーチンを開始
+            // マウスカーソル直下の色を取得するコルーチンを開始
             StartCoroutine(PickColorCoroutine());
         }
 
         void OnDestroy()
         {
-            uniWin.Dispose();
+            if (uniWin != null) {
+                uniWin.Dispose();
+            }
         }
 
         // Update is called once per frame
@@ -226,7 +230,7 @@ namespace Kirurobo
         {
             // 自ウィンドウ取得状態が不確かなら探しなおす
             //  マウス押下が取れるのはすなわちフォーカスがあるとき
-            if (Input.GetMouseButtonDown(0))
+            if (Input.anyKey)
             {
                 UpdateWindow();
             }
@@ -238,17 +242,8 @@ namespace Kirurobo
             DragMove();
 
             // ウィンドウ枠が復活している場合があるので監視するため、呼ぶ
-            uniWin.Update();
-
-            // デバッグ
-            if (Input.GetKey(KeyCode.Space))
-            {
-                var list = UniWinApi.FindWindows();
-                foreach (var window in list)
-                {
-                    Debug.Log(window);
-                }
-                Debug.Log("CheckActiveWindow: " + uniWin.CheckActiveWindow());
+            if (uniWin != null) {
+                uniWin.Update();
             }
         }
 
@@ -268,6 +263,8 @@ namespace Kirurobo
         /// </summary>
         void DragMove()
         {
+            if (uniWin == null) return;
+
             // ドラッグでの移動が無効化されていた場合
             if (!enableDragMove)
             {
@@ -610,7 +607,20 @@ namespace Kirurobo
         {
             if (Application.isPlaying)
             {
-                uniWin.Dispose();
+                if (uniWin != null) {
+                    uniWin.Dispose();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 自分のウィンドウにフォーカスを与える
+        /// </summary>
+        public void Focus()
+        {
+            if (uniWin != null)
+            {
+                uniWin.SetFocus();
             }
         }
     }
