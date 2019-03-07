@@ -225,7 +225,8 @@ namespace Kirurobo
 
         void OnDestroy()
         {
-            if (uniWin != null) {
+            if (uniWin != null)
+            {
                 uniWin.Dispose();
             }
         }
@@ -247,7 +248,8 @@ namespace Kirurobo
             DragMove();
 
             // ウィンドウ枠が復活している場合があるので監視するため、呼ぶ
-            if (uniWin != null) {
+            if (uniWin != null)
+            {
                 uniWin.Update();
             }
         }
@@ -643,7 +645,8 @@ namespace Kirurobo
         {
             if (Application.isPlaying)
             {
-                if (uniWin != null) {
+                if (uniWin != null)
+                {
                     uniWin.Dispose();
                 }
             }
