@@ -139,6 +139,11 @@ namespace Kirurobo
         private Vector2 lastMousePosition;
 
         /// <summary>
+        /// 最後のドラッグはマウスによるものか、タッチによるものか
+        /// </summary>
+        private bool wasUsingMouse;
+
+        /// <summary>
         /// 現在対象としているウィンドウが自分自身らしいと確認できたらtrueとする
         /// </summary>
         private bool isWindowChecked = false;
@@ -291,14 +296,37 @@ namespace Kirurobo
             {
                 lastMousePosition = UniWinApi.GetCursorPosition();
                 isDragging = true;
+                wasUsingMouse = true;
             }
-            if (!Input.GetMouseButton(0))
+            bool touching = false;
+            if (Input.touchCount > 0)
+            {
+                Touch touch = Input.GetTouch(0);
+                lastMousePosition = touch.rawPosition;
+                isDragging = true;
+                wasUsingMouse = false;
+                touching = true;
+            }
+            if (wasUsingMouse && !Input.GetMouseButton(0))
+            {
+                isDragging = false;
+            }
+            else if (!wasUsingMouse && !touching)
             {
                 isDragging = false;
             }
             if (isDragging)
             {
-                Vector2 mousePos = UniWinApi.GetCursorPosition();
+                Vector2 mousePos;
+                if (wasUsingMouse)
+                {
+                    mousePos = UniWinApi.GetCursorPosition();
+                }
+                else
+                {
+                    Touch touch = Input.GetTouch(0);
+                    mousePos = touch.rawPosition;
+                }
                 Vector2 delta = mousePos - lastMousePosition;
                 lastMousePosition = mousePos;
 
@@ -354,7 +382,15 @@ namespace Kirurobo
             // カメラが不明ならば何もしない
             if (!cam) return;
 
-            Vector2 mousePos = Input.mousePosition;
+            Vector2 mousePos;
+            if (Input.touchCount > 0)
+            {
+                mousePos = Input.touches[0].position;
+            }
+            else
+            {
+                mousePos = Input.mousePosition;
+            }
             Rect camRect = cam.pixelRect;
 
             //// コルーチン & WaitForEndOfFrame ではなく、OnPostRenderで呼ぶならば、MSAAによって上下反転しないといけない？
