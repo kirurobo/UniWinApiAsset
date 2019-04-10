@@ -1,15 +1,17 @@
 # UniWinApi
 
-**UniWinApi** is a Windows API utility with a window controller class for Unity. This allows some window controls that Unity originally does not provide as follows.
+**UniWinApi** is a Windows API utility with a window controller class for Unity. This allows several window controls that Unity originally does not provide as followings.
 
-* Move the window
-* Resize the window
-* Maximize or Minimize
-* **Transparent (non-rectangular) window** 
+* Move window
+* Resize window
+* Maximize and Minimize
+* **Transparent window** (the window hasn't any borders, so it looks non-rectangular) 
 * **Accept file dropping**
-* **File open dialog (Experimental)**
-* Move the mouse pointer
-* Send mouse button up/down
+* **Open File open dialog (Experimental - file only now)**
+* Move mouse pointer
+* Send mouse button operation (up / down)
+
+This asset is designed to provide functions which enable your Unity application to be some kind of Desktop Mascot.
 
 [![UniWinApi VRM viewer](http://i.ytimg.com/vi/cq2g-hIGlAs/mqdefault.jpg)](https://youtu.be/cq2g-hIGlAs "UniWinApi VRM viewer v0.4.0 beta")
 
@@ -28,20 +30,71 @@
 ## Usage
 
 1. Download .unitypackage file from the [Releases](https://github.com/kirurobo/UniWinApi/releases) page.
-2. Impoart the package to your project.
-3. Attach "WindowController.cs" to a suitable object
-    * Creating an empty object named "WindowController" is recommended.
-4. Build the project as PC Standalone application.
+2. Import the package to your project.
+3. Attach "WindowController.cs" to the object which you want to add the functions.
+    * Recommended: Create an empty object named "WindowController".
+4. Build the project as "PC Standalone" for "Platform"
+
 
 ## License
 
 [![CC0](http://i.creativecommons.org/p/zero/1.0/88x31.png "CC0")](http://creativecommons.org/publicdomain/zero/1.0/deed.ja)
+
+
+UniWinApi.cs is main. In addition, WindowsController.cs is provided which enables controls of self window.
+
+You can change the state of the window. To enable that, change following values in Inspector View or write script which sets these values.
+
+
+- IsTransparent - Let borders of the window transparent
+- IsTopmost - Fixed to the front
+- IsMaximized - Maximize the window
+- IsMinimized - Minimize the window
+- EnableFileDrop - Enable file dropping
+- EnableDragMove - Enable window dragging with mouse left button
+
+![image](https://user-images.githubusercontent.com/1019117/51594588-1dcb4080-1f38-11e9-9a93-910f59632fc2.png)
+
+If you use file dropping, there is the event named `OnFilesDropped(string[] files). Thus, add some procedures to this.
+
+I'm sorry that the document hasn't prepared. Please read the sample project (^-^;
+
+## Attention
+
+- Since I haven't known how to get window handle certainly, rarely you might operate with another window.
+  - (On the other hand, you can designate and operate other windows)
+- You might be forced to down the application if the window lost the "Close" button or if you cannot see the window since the window goes to somewhere.
+
+## FAQ
+- The transparent application looks false on Editor
+  - This is because of the specification. You have to build to confirm the transparent appearance.
+  - You cannot let the Game window transparent. I suppose it's because something paints the background.
+  - Normally the operation object is Game View. If the view is docked with other views, the object is the whole window.
+
+## License
+
+[![CC0](http://i.creativecommons.org/p/zero/1.0/88x31.png "CC0")](http://creativecommons.org/publicdomain/zero/1.0/deed.ja)
+
+UniWinApi is CC0 public domain.
+You can modify, duplicate or redistribute without copyright notice.
+However, there is no operation guarantee.
+
+*I recognize this should be able to be CC0 in the scope of copyright protection, though I have used other information such as blogs as references. Because when I finish implementation of whole function set, the deliverable must be similar.
 
 ## Contact & Source
 
 * [Twitter: @kirurobo](http://twitter.com/kirurobo)
 * [GitHub](http://github.com/kirurobo)
 
+## Change log
+
+* 2019/01/23 Add file open dialog. Return the way to acquire self window to be active window standard
+* 2018/12/28 Add namespace, Modify the way to acquire self window to be PID standard
+* 2018/12/07 Separate the asset part of UniWinApi
+* 2018/09/09 Publish package since this looks to work mostly as expected
+* 2018/08/24 Arrange again as UniWinApi
+* 2015/03/03 Set keep the status just before when the window is maximized or minimized
+* 2014/04/26 First publish
 
 ---
 
