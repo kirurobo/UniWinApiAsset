@@ -453,7 +453,8 @@ namespace Kirurobo
             List<WindowHandle> windowList = new List<WindowHandle>();
             foreach (IntPtr hwnd in hWndList)
             {
-                if (WinApi.IsWindow(hwnd)) {
+                if (WinApi.IsWindow(hwnd))
+                {
                     WindowHandle window = new WindowHandle(hwnd);
                     windowList.Add(window);
                 }
@@ -659,7 +660,7 @@ namespace Kirurobo
             return file;
         }
 
-#region マウス操作関連
+        #region マウス操作関連
         /// <summary>
         /// マウスカーソルを指定座標へ移動させる
         /// </summary>
@@ -723,9 +724,9 @@ namespace Kirurobo
                 0, 0, 0, IntPtr.Zero
                 );
         }
-#endregion
+        #endregion
 
-#region キー操作関連
+        #region キー操作関連
         /// <summary>
         /// キーコードを送ります
         /// </summary>
@@ -733,9 +734,9 @@ namespace Kirurobo
         {
             WinApi.PostMessage(this.hWnd, WinApi.WM_IME_CHAR, (long)code, IntPtr.Zero);
         }
-#endregion
+        #endregion
 
-#region ファイルドロップ関連
+        #region ファイルドロップ関連
         /// <summary>
         /// ファイルドロップ時に発生するイベント
         /// </summary>
@@ -920,9 +921,9 @@ namespace Kirurobo
             RestoreWindowState();
         }
 
-#endregion
+        #endregion
 
-#region File open dialog
+        #region File open dialog
 
         public string ShowOpenFileDialog(string filter = "All files|*.*")
         {
@@ -950,7 +951,7 @@ namespace Kirurobo
             }
             return null;
         }
-#endregion
+        #endregion
     }
 
 }
