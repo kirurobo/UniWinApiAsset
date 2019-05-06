@@ -14,24 +14,49 @@ namespace Kirurobo
     {
         private EditorWindow gameViewWindow;
 
+        private bool isWarningDismissed = false;
+
+        void OnEnable()
+        {
+            LoadSettings();
+        }
+
+        void OnDisable()
+        {
+            SaveSettings();
+        }
+
+        private void LoadSettings()
+        {
+            isWarningDismissed = EditorUserSettings.GetConfigValue("WindowController_IS_WARNING DISMISSED") == "1";
+        }
+
+        private void SaveSettings()
+        {
+            EditorUserSettings.SetConfigValue("WindowController_IS_WARNING DISMISSED", isWarningDismissed ? "1" : "0");
+        }
+
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
 
-            // 自動調整ボタンを表示させるならtrueとなる
-            bool showButton = false;
-
-            if (!PlayerSettings.runInBackground)
+            // 推奨設定のチェック
+            if (!isWarningDismissed)
             {
-                EditorGUILayout.HelpBox("'Run in background' is recommended.", MessageType.Warning);
-                showButton = true;
-            }
+                // 自動調整ボタンを表示させるならtrueとなる
+                bool showButton = false;
 
-            if (!PlayerSettings.resizableWindow)
-            {
-                EditorGUILayout.HelpBox("'Resizable window' is recommended.", MessageType.Warning);
-                showButton = true;
-            }
+                if (!PlayerSettings.runInBackground)
+                {
+                    EditorGUILayout.HelpBox("'Run in background' is recommended.", MessageType.Warning);
+                    showButton = true;
+                }
+
+                if (!PlayerSettings.resizableWindow)
+                {
+                    EditorGUILayout.HelpBox("'Resizable window' is recommended.", MessageType.Warning);
+                    showButton = true;
+                }
 
 #if UNITY_2018_1_OR_NEWER
         if (PlayerSettings.fullScreenMode != FullScreenMode.Windowed)
@@ -51,23 +76,42 @@ namespace Kirurobo
             }
         }
 #else
-            if (PlayerSettings.defaultIsFullScreen)
-            {
-                EditorGUILayout.HelpBox("'Default is full screen' is not recommended.", MessageType.Warning);
-                showButton = true;
-            }
-
-            if (showButton)
-            {
-                GUI.backgroundColor = Color.green;
-                if (GUILayout.Button("Apply all recommended settings"))
+                if (PlayerSettings.defaultIsFullScreen)
                 {
-                    PlayerSettings.runInBackground = true;
-                    PlayerSettings.resizableWindow = true;
-                    PlayerSettings.defaultIsFullScreen = false;
+                    EditorGUILayout.HelpBox("'Default is full screen' is not recommended.", MessageType.Warning);
+                    showButton = true;
                 }
-            }
+
+                //  チェックに引っかかればボタンを表示
+                if (showButton)
+                {
+                    GUI.backgroundColor = Color.green;
+                    if (
+                        GUILayout.Button(
+                            "✔ Apply all recommended settings",
+                            GUILayout.MinHeight(30f)
+                        ))
+                    {
+                        PlayerSettings.runInBackground = true;
+                        PlayerSettings.resizableWindow = true;
+                        PlayerSettings.defaultIsFullScreen = false;
+                    }
+
+                    GUI.backgroundColor = Color.red;
+                    if (
+                        GUILayout.Button(
+                            "✘ Dismiss this validation",
+                            GUILayout.MinHeight(30f)
+                        ))
+                    {
+                        isWarningDismissed = true;
+                        //SaveSettings();
+                    }
+
+                    EditorGUILayout.Space();
+                }
 #endif
+            }
         }
 
         // 参考 http://baba-s.hatenablog.com/entry/2017/09/17/135018

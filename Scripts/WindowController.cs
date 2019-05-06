@@ -6,6 +6,7 @@
  */
 
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -33,7 +34,6 @@ namespace Kirurobo
     /// </summary>
     public class WindowController : MonoBehaviour
     {
-
         /// <summary>
         /// Window controller
         /// </summary>
@@ -110,6 +110,7 @@ namespace Kirurobo
         /// <summary>
         /// マウスドラッグでウィンドウを移動させるか
         /// </summary>
+        [Tooltip("Make the window draggable while a left mouse button is pressed")]
         public bool enableDragMove = true;
 
 
@@ -134,13 +135,26 @@ namespace Kirurobo
         [ReadOnly, Tooltip("Pixel color under the mouse pointer. (Read only)")]
         public Color pickedColor;
 
-
+        /// <summary>
+        /// 現在ドラッグ処理中ならばtrue
+        /// </summary>
         private bool isDragging = false;
-        private Vector2 lastMousePosition;
+
+        /// <summary>
+        /// ドラッグ開始時のウィンドウ内座標[px]
+        /// </summary>
+        private Vector2 dragStartedPosition;
+
+        /// <summary>
+        /// 描画の上にタッチがあればそのfingerIdが入る
+        /// </summary>
+        [SerializeField]
+        private int activeFingerId = -1;
 
         /// <summary>
         /// 最後のドラッグはマウスによるものか、タッチによるものか
         /// </summary>
+        [SerializeField]
         private bool wasUsingMouse;
 
         /// <summary>
@@ -152,6 +166,12 @@ namespace Kirurobo
         /// カメラのインスタンス
         /// </summary>
         private Camera currentCamera;
+
+        /// <summary>
+        /// タッチがBeganとなったものを受け渡すためのリスト
+        /// PickColorCoroutine()実行のタイミングではどうもtouch.phaseがうまくとれないようなのでこれで渡してみる
+        /// </summary>
+        private Touch? firstTouch = null;
 
 
         /// <summary>
@@ -178,6 +198,8 @@ namespace Kirurobo
         // Use this for initialization
         void Awake()
         {
+            Input.simulateMouseWithTouches = false;
+
             if (!currentCamera)
             {
                 // メインカメラを探す
@@ -241,11 +263,21 @@ namespace Kirurobo
                 UpdateWindow();
             }
 
+            // マウスドラッグでウィンドウ移動
+            DragMove();
+
             // キー、マウス操作の下ウィンドウへの透過状態を更新
             UpdateClickThrough();
 
-            // マウスドラッグでウィンドウ移動
-            DragMove();
+
+            if (uniWin != null)
+            {
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    Debug.Log(Screen.width + " : " + Screen.height);
+                    uniWin.SetPosition(Vector2.zero);
+                }
+            }
 
             // ウィンドウ枠が復活している場合があるので監視するため、呼ぶ
             if (uniWin != null)
@@ -279,11 +311,13 @@ namespace Kirurobo
                 return;
             }
 
+            //Debug.Log(Input.touchCount);
+
             // 最大化状態ならウィンドウ移動は行わないようにする
             bool isFullScreen = uniWin.IsMaximized;
 
-#if !UNITY_EDITOR
             // フルスクリーンならウィンドウ移動は行わない
+#if !UNITY_EDITOR
             //  エディタだと true になってしまうようなので、エディタ以外でのみ確認
             if (Screen.fullScreen) isFullScreen = true;
 #endif
@@ -293,48 +327,93 @@ namespace Kirurobo
                 return;
             }
 
-            // マウスドラッグでウィンドウ移動
-            if (Input.GetMouseButtonDown(0))
+            // マウスによるドラッグ開始の判定
+            if (Input.GetMouseButtonDown(0) && !Input.GetMouseButton(1) && !Input.GetMouseButton(2))
             {
-                lastMousePosition = UniWinApi.GetCursorPosition();
+                dragStartedPosition = Input.mousePosition;
                 isDragging = true;
                 wasUsingMouse = true;
+                Debug.Log("Start mouse dragging");
             }
-            bool touching = false;
-            if (Input.touchCount > 0)
+
+            bool touching = (activeFingerId >= 0);
+
+            int targetTouchIndex = -1;
+            if (activeFingerId < 0)
             {
-                Touch touch = Input.GetTouch(0);
-                lastMousePosition = touch.rawPosition;
+                // まだ追跡中の指が無かった場合、Beganとなるタッチがあればそれを追跡候補に挙げる
+                for (int i = 0; i < Input.touchCount; i++)
+                {
+                    if (Input.GetTouch(i).phase == TouchPhase.Began)
+                    {
+                        Debug.Log("Touch began");
+                        //targetTouchIndex = i;
+                        firstTouch = Input.GetTouch(i);     // まだドラッグ開始とはせず、透過画素判定に回す。
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                // 追跡中の指がある場合
+                for (int i = 0; i < Input.touchCount; i++)
+                {
+                    if (activeFingerId == Input.GetTouch(i).fingerId)
+                    {
+                        targetTouchIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // タッチによるドラッグ開始の判定
+            if (targetTouchIndex >= 0 && !isDragging)
+            {
+                dragStartedPosition = Input.GetTouch(targetTouchIndex).position;
+                //activeFingerId = Input.GetTouch(targetTouchIndex).fingerId;
                 isDragging = true;
                 wasUsingMouse = false;
-                touching = true;
+                //Debug.Log("Start touch dragging");
             }
+
+            // ドラッグ終了の判定
             if (wasUsingMouse && !Input.GetMouseButton(0))
             {
+                //Debug.Log("End mouse dragging");
+                activeFingerId = -1;
                 isDragging = false;
             }
-            else if (!wasUsingMouse && !touching)
+            else if (!wasUsingMouse && targetTouchIndex < 0)
             {
+                //if (touching) Debug.Log("End touch dragging");
+                activeFingerId = -1;
                 isDragging = false;
             }
+
+            // ドラッグ中ならば、ウィンドウ位置を更新
             if (isDragging)
             {
                 Vector2 mousePos;
                 if (wasUsingMouse)
                 {
-                    mousePos = UniWinApi.GetCursorPosition();
+                    mousePos = Input.mousePosition;
+                    Vector2 delta = mousePos - dragStartedPosition;
+                    delta.y = -delta.y;     // Y座標は反転
+
+                    Vector2 windowPosition = uniWin.GetPosition();  // 現在のウィンドウ位置を取得
+                    windowPosition += delta; // ウィンドウ位置に上下左右移動分を加える
+                    uniWin.SetPosition(windowPosition);   // ウィンドウ位置を設定
                 }
                 else
                 {
-                    Touch touch = Input.GetTouch(0);
-                    mousePos = touch.rawPosition;
-                }
-                Vector2 delta = mousePos - lastMousePosition;
-                lastMousePosition = mousePos;
+                    Touch touch = Input.GetTouch(targetTouchIndex);
+                    Vector2 delta = touch.position - dragStartedPosition;
+                    delta.y = -delta.y;     // Y座標は反転
 
-                Vector2 windowPosition = uniWin.GetPosition();  // 現在のウィンドウ位置を取得
-                windowPosition += delta; // ウィンドウ位置に上下左右移動分を加える
-                uniWin.SetPosition(windowPosition);   // ウィンドウ位置を設定
+                    Vector2 windowPosition = uniWin.GetPosition();  // 現在のウィンドウ位置を取得
+                    windowPosition += delta; // ウィンドウ位置に上下左右移動分を加える
+                    uniWin.SetPosition(windowPosition);   // ウィンドウ位置を設定
+                }
             }
         }
 
@@ -343,9 +422,12 @@ namespace Kirurobo
         /// </summary>
         void UpdateClickThrough()
         {
+            // マウスカーソル非表示状態ならば透明画素上と同扱い
+            bool opaque = (onOpaquePixel && !UniWinApi.GetCursorVisible());
+
             if (_isClickThrough)
             {
-                if (onOpaquePixel)
+                if (opaque)
                 {
                     if (uniWin != null) uniWin.EnableClickThrough(false);
                     _isClickThrough = false;
@@ -353,7 +435,7 @@ namespace Kirurobo
             }
             else
             {
-                if (isTransparent && !onOpaquePixel && !isDragging)
+                if (isTransparent && !opaque && !isDragging)
                 {
                     if (uniWin != null) uniWin.EnableClickThrough(true);
                     _isClickThrough = true;
@@ -370,56 +452,88 @@ namespace Kirurobo
             while (Application.isPlaying)
             {
                 yield return new WaitForEndOfFrame();
-                MyPostRender(currentCamera);
+                UpdateOnOpaquePixel();
             }
             yield return null;
         }
 
         /// <summary>
-        /// マウス下の画素が透明かどうかを確認
+        /// マウス下の画素があるかどうかを確認
         /// </summary>
         /// <param name="cam"></param>
-        void MyPostRender(Camera cam)
+        private void UpdateOnOpaquePixel()
         {
-            // カメラが不明ならば何もしない
-            if (!cam) return;
-
             Vector2 mousePos;
-            if (Input.touchCount > 0)
-            {
-                mousePos = Input.touches[0].position;
-            }
-            else
-            {
-                mousePos = Input.mousePosition;
-            }
-            Rect camRect = cam.pixelRect;
+　          mousePos = Input.mousePosition;
 
             //// コルーチン & WaitForEndOfFrame ではなく、OnPostRenderで呼ぶならば、MSAAによって上下反転しないといけない？
             //if (QualitySettings.antiAliasing > 1) mousePos.y = camRect.height - mousePos.y;
 
-            if (camRect.Contains(mousePos))
+            // タッチ開始点が指定されれば、それを調べる
+            if (firstTouch != null)
             {
-                try
+                Touch touch = (Touch)firstTouch;
+                Vector2 pos = touch.position;
+
+                firstTouch = null;
+
+                if (GetOnOpaquePixel(pos))
                 {
-                    // Reference http://tsubakit1.hateblo.jp/entry/20131203/1386000440
-                    colorPickerTexture.ReadPixels(new Rect(mousePos, Vector2.one), 0, 0);
-                    Color color = colorPickerTexture.GetPixel(0, 0);
-                    pickedColor = color;
-                    onOpaquePixel = (color.a >= opaqueThreshold);  // αがしきい値以上ならば不透過とする
+                    onOpaquePixel = true;
+                    activeFingerId = touch.fingerId;
+                    return;
                 }
-                catch (System.Exception ex)
-                {
-                    // 稀に範囲外になってしまうよう
-                    Debug.LogError(ex.Message);
-                    onOpaquePixel = false;
-                }
+            }
+
+            // マウス座標を調べる
+            if (GetOnOpaquePixel(mousePos))
+            {
+                //Debug.Log("Mouse " + mousePos);
+                onOpaquePixel = true;
+                //activeFingerId = -1;    // タッチ追跡は解除
+                return;
             }
             else
             {
                 onOpaquePixel = false;
             }
         }
+
+        /// <summary>
+        /// 指定座標の画素が透明か否かを返す
+        /// </summary>
+        /// <param name="mousePos">座標[px]。必ず描画範囲内であること。</param>
+        /// <returns></returns>
+        private bool GetOnOpaquePixel(Vector2 mousePos)
+        {
+            // 画面外であれば透明と同様
+            if (
+                mousePos.x < 0 || mousePos.x >= Screen.width
+                || mousePos.y < 0 || mousePos.y >= Screen.height
+                )
+            {
+                return false;
+            }
+
+            // 透過状態でなければ、範囲内なら不透過扱いとする
+            if (!_isTransparent) return true;
+
+            // 指定座標の描画結果を見て判断
+            try
+            {
+                // Reference http://tsubakit1.hateblo.jp/entry/20131203/1386000440
+                colorPickerTexture.ReadPixels(new Rect(mousePos, Vector2.one), 0, 0);
+                Color color = colorPickerTexture.GetPixel(0, 0);
+                pickedColor = color;
+                return (color.a >= opaqueThreshold);  // αがしきい値以上ならば不透過とする
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError(ex.Message);
+                return false;
+            }
+        }
+
 
         /// <summary>
         /// 自分のウィンドウハンドルを見つける

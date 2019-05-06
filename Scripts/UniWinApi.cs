@@ -594,22 +594,36 @@ namespace Kirurobo
 
 #if UNITY_EDITOR
             // エディタの場合は操作の透過はやめておく
+            //if (isClickThrough)
+            //{
+            //    long exstyle = this.CurrentWindowExStyle;
+            //    exstyle |= WinApi.WS_EX_TRANSPARENT;
+            //    //exstyle |= WinApi.WS_EX_LAYERED;
+            //    this.CurrentWindowExStyle = exstyle;
+            //    WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+            //}
+            //else
+            //{
+            //    this.CurrentWindowExStyle = this.OriginalWindowExStyle;
+            //    if (enableFileDrop) this.CurrentWindowExStyle |= WinApi.WS_EX_ACCEPTFILES;
+            //    WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+            //}
 #else
-        // エディタでなければ操作を透過
-        if (isClickThrough)
-        {
-            long exstyle = this.CurrentWindowExStyle;
-            exstyle |= WinApi.WS_EX_TRANSPARENT;
-            exstyle |= WinApi.WS_EX_LAYERED;
-            this.CurrentWindowExStyle = exstyle;
-            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
-        }
-        else
-        {
-            this.CurrentWindowExStyle = this.OriginalWindowExStyle;
-            if (enableFileDrop) this.CurrentWindowExStyle |= WinApi.WS_EX_ACCEPTFILES;
-            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
-        }
+            // エディタでなければ操作を透過
+            if (isClickThrough)
+            {
+                long exstyle = this.CurrentWindowExStyle;
+                exstyle |= WinApi.WS_EX_TRANSPARENT;
+                exstyle |= WinApi.WS_EX_LAYERED;
+                this.CurrentWindowExStyle = exstyle;
+                WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+            }
+            else
+            {
+                this.CurrentWindowExStyle = this.OriginalWindowExStyle;
+                if (enableFileDrop) this.CurrentWindowExStyle |= WinApi.WS_EX_ACCEPTFILES;
+                WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+            }
 #endif
         }
 
@@ -679,6 +693,21 @@ namespace Kirurobo
             WinApi.POINT point;
             WinApi.GetCursorPos(out point);
             return new Vector2(point.x, point.y);
+        }
+
+        /// <summary>
+        /// マウスカーソルが表示中かどうかを取得
+        /// </summary>
+        /// <returns>true:Showing, false:Hidden or Suppressed</returns>
+        static public bool GetCursorVisible()
+        {
+            WinApi.CURSORINFO cinfo = new WinApi.CURSORINFO();
+            cinfo.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(cinfo);
+            if (WinApi.GetCursorInfo(ref cinfo))
+            {
+                return (cinfo.flags == 0) || ((cinfo.flags & 2) > 0);
+            }
+            return true;
         }
 
         /// <summary>
