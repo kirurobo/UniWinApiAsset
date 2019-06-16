@@ -113,6 +113,10 @@ namespace Kirurobo
         [Tooltip("Make the window draggable while a left mouse button is pressed")]
         public bool enableDragMove = true;
 
+        /// <summary>
+        /// 透過方式の指定
+        /// </summary>
+        public UniWinApi.TransparentType transparentType = UniWinApi.TransparentType.DWM;
 
         // カメラの背景をアルファゼロの黒に置き換えるため、本来の背景を保存しておく変数
         private CameraClearFlags originalCameraClearFlags;
@@ -227,6 +231,9 @@ namespace Kirurobo
             // ウィンドウ制御用のインスタンス作成
             uniWin = new UniWinApi();
 
+            // 透過方式の指定
+            uniWin.TransparentMode = transparentType;
+
             // 自分のウィンドウを取得
             FindMyWindow();
 #endif
@@ -270,12 +277,24 @@ namespace Kirurobo
             UpdateClickThrough();
 
 
+            // デバッグ用
             if (uniWin != null)
             {
-                if (Input.GetKeyDown(KeyCode.Space))
+                // [Ctrl]+[T] で透過方式を変更
+                if (Input.GetKeyDown(KeyCode.T) && Input.GetKey(KeyCode.LeftControl))
                 {
-                    Debug.Log(Screen.width + " : " + Screen.height);
-                    uniWin.SetPosition(Vector2.zero);
+                    //Debug.Log(Screen.width + " : " + Screen.height);
+                    //uniWin.SetPosition(Vector2.zero);
+
+                    // 透過モード入れ替え
+                    if (uniWin.TransparentMode == UniWinApi.TransparentType.LayereredWindows)
+                    {
+                        uniWin.TransparentMode = UniWinApi.TransparentType.DWM;
+                    } else
+                    {
+                        uniWin.TransparentMode = UniWinApi.TransparentType.LayereredWindows;
+                    }
+                    transparentType = uniWin.TransparentMode;
                 }
             }
 
@@ -506,10 +525,14 @@ namespace Kirurobo
         /// <returns></returns>
         private bool GetOnOpaquePixel(Vector2 mousePos)
         {
+            float w = Screen.width;
+            float h = Screen.height;
+            //Debug.Log(w + ", " + h);
+
             // 画面外であれば透明と同様
             if (
-                mousePos.x < 0 || mousePos.x >= Screen.width
-                || mousePos.y < 0 || mousePos.y >= Screen.height
+                mousePos.x < 0 || mousePos.x >= w
+                || mousePos.y < 0 || mousePos.y >= h
                 )
             {
                 return false;
@@ -519,12 +542,14 @@ namespace Kirurobo
             if (!_isTransparent) return true;
 
             // 指定座標の描画結果を見て判断
-            try
+            try   // WaitForEndOfFrame のタイミングで実行すればtryは無くても大丈夫？
             {
                 // Reference http://tsubakit1.hateblo.jp/entry/20131203/1386000440
                 colorPickerTexture.ReadPixels(new Rect(mousePos, Vector2.one), 0, 0);
-                Color color = colorPickerTexture.GetPixel(0, 0);
+                //Color color = colorPickerTexture.GetPixel(0, 0);
+                Color color = colorPickerTexture.GetPixels32()[0];  // こちらの方が僅かに速い？
                 pickedColor = color;
+
                 return (color.a >= opaqueThreshold);  // αがしきい値以上ならば不透過とする
             }
             catch (System.Exception ex)
@@ -621,7 +646,14 @@ namespace Kirurobo
             if (isTransparent)
             {
                 currentCamera.clearFlags = CameraClearFlags.SolidColor;
-                currentCamera.backgroundColor = Color.clear;
+                if (uniWin.TransparentMode == UniWinApi.TransparentType.LayereredWindows)
+                {
+                    currentCamera.backgroundColor = uniWin.ChromakeyColor;
+                }
+                else
+                {
+                    currentCamera.backgroundColor = Color.clear;
+                }
             }
             else
             {
