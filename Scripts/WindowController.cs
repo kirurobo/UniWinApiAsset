@@ -331,7 +331,7 @@ namespace Kirurobo
                 dragStartedPosition = Input.mousePosition;
                 isDragging = true;
                 wasUsingMouse = true;
-                Debug.Log("Start mouse dragging");
+                //Debug.Log("Start mouse dragging");
             }
 
             bool touching = (activeFingerId >= 0);
@@ -344,7 +344,7 @@ namespace Kirurobo
                 {
                     if (Input.GetTouch(i).phase == TouchPhase.Began)
                     {
-                        Debug.Log("Touch began");
+                        //Debug.Log("Touch began");
                         //targetTouchIndex = i;
                         firstTouch = Input.GetTouch(i);     // まだドラッグ開始とはせず、透過画素判定に回す。
                         break;
@@ -520,6 +520,9 @@ namespace Kirurobo
             // 透過状態でなければ、範囲内なら不透過扱いとする
             if (!_isTransparent) return true;
 
+            // LayeredWindowならばクリックスルーはOSに任せるため、ウィンドウ内ならtrueを返しておく
+            if (transparentMethod == UniWinApi.TransparentType.LayereredWindows) return true;
+
             // 指定座標の描画結果を見て判断
             try   // WaitForEndOfFrame のタイミングで実行すればtryは無くても大丈夫？
             {
@@ -675,8 +678,8 @@ namespace Kirurobo
             if (isTransparent)
             {
                 // 透明化状態だったならば再度透明化を設定し直す
-                uniWin.EnableTransparent(false);
-                uniWin.EnableTransparent(true);
+                SetTransparent(false);
+                SetTransparent(true);
             }
         }
 
