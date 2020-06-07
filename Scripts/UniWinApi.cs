@@ -102,6 +102,16 @@ namespace Kirurobo
             }
         }
 
+        /// <summary>
+        /// 透明化の方式
+        /// </summary>
+        public enum TransparentType
+        {
+            None = 0,
+            DWM = 1,
+            LayereredWindows = 2,
+        }
+
 
         /// <summary>
         /// このウィンドウのハンドル
@@ -141,6 +151,17 @@ namespace Kirurobo
         /// 標準ウィンドウサイズの指定
         /// </summary>
         public Vector2 OriginalWindowSize;
+
+        /// <summary>
+        /// ウィンドウ透過方式
+        /// </summary>
+        public TransparentType TransparentMethod = TransparentType.DWM;
+        private TransparentType currentTransparentType = TransparentType.DWM;
+
+        /// <summary>
+        /// Layered Windows で透過する色
+        /// </summary>
+        public Color32 ChromakeyColor = new Color32(1, 0, 1, 0);
 
         /// <summary>
         /// 元のウィンドウスタイル
@@ -518,25 +539,40 @@ namespace Kirurobo
                 // 枠無しウィンドウにする
                 EnableBorderless(true);
 
-                EnableTransparentByDWM();
-
-                // ウィンドウ再描画
-                WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
-                SetSize(GetSize());
+                switch (TransparentMethod)
+                {
+                    case TransparentType.DWM:
+                        EnableTransparentByDWM();
+                        break;
+                    case TransparentType.LayereredWindows:
+                        EnableTransparentBySetLayered();
+                        break;
+                }
             }
             else
             {
-                DisableTransparentByDWM();
+                // 現在の指定ではなく、透過にした時点の指定に基づいて無効化
+                switch (currentTransparentType)
+                {
+                    case TransparentType.DWM:
+                        DisableTransparentByDWM();
+                        break;
+                    case TransparentType.LayereredWindows:
+                        DisableTransparentBySetLayered();
+                        break;
+                }
 
-                // ウィンドウスタイルを戻す
+                // 枠ありウィンドウにする
                 EnableBorderless(false);
 
                 // 操作の透過をやめる
                 EnableClickThrough(false);
-
-                // サイズ変更イベントを発生させる
-                SetSize(GetSize());
             }
+
+            currentTransparentType = TransparentMethod;
+
+            // サイズ変更イベントを発生させる
+            SetSize(GetSize());
 
             // ウィンドウ再描画
             WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
@@ -554,6 +590,43 @@ namespace Kirurobo
             //	※ 本来のウィンドウが何らかの範囲指定でGlassにしていた場合は、残念ながら表示が戻りません
             DwmApi.MARGINS margins = new DwmApi.MARGINS(0, 0, 0, 0);
             DwmApi.DwmExtendFrameIntoClientArea(hWnd, margins);
+        }
+
+        /// <summary>
+        /// SetLayeredWindowsAttributes によって指定色を透過させる
+        /// </summary>
+        private void EnableTransparentBySetLayered()
+        {
+#if UNITY_EDITOR
+            // エディタの場合、設定すると描画が更新されなくなってしまう
+#else
+            Color32 color32 = ChromakeyColor;
+            WinApi.COLORREF cref = new WinApi.COLORREF(color32.r, color32.g, color32.b);
+            WinApi.SetLayeredWindowAttributes(hWnd, cref, 0xFF, WinApi.LWA_COLORKEY);
+
+            long exstyle = this.CurrentWindowExStyle;
+            exstyle |= WinApi.WS_EX_LAYERED;
+            this.CurrentWindowExStyle = exstyle;
+            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+#endif
+        }
+
+        /// <summary>
+        /// SetLayeredWindowsAttributes によって指定色を透過させる
+        /// </summary>
+        private void DisableTransparentBySetLayered()
+        {
+#if UNITY_EDITOR
+            // エディタの場合、設定すると描画が更新されなくなってしまう
+#else
+            WinApi.COLORREF cref = new WinApi.COLORREF(0, 0, 0);
+            WinApi.SetLayeredWindowAttributes(hWnd, cref, 0xFF, 0x00);
+
+            long exstyle = this.CurrentWindowExStyle;
+            exstyle &= ~WinApi.WS_EX_LAYERED;
+            this.CurrentWindowExStyle = exstyle;
+            WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+#endif
         }
 
         /// <summary>
@@ -591,6 +664,9 @@ namespace Kirurobo
         public void EnableClickThrough(bool isClickThrough)
         {
             if (!IsActive) return;
+
+            // Layered Window での透過時は、操作透過はOSで行われる
+            if (currentTransparentType == TransparentType.LayereredWindows) return;
 
 #if UNITY_EDITOR
             // エディタの場合は操作の透過はやめておく
@@ -674,7 +750,7 @@ namespace Kirurobo
             return file;
         }
 
-        #region マウス操作関連
+#region マウス操作関連
         /// <summary>
         /// マウスカーソルを指定座標へ移動させる
         /// </summary>
@@ -753,9 +829,9 @@ namespace Kirurobo
                 0, 0, 0, IntPtr.Zero
                 );
         }
-        #endregion
+#endregion
 
-        #region キー操作関連
+#region キー操作関連
         /// <summary>
         /// キーコードを送ります
         /// </summary>
@@ -763,9 +839,9 @@ namespace Kirurobo
         {
             WinApi.PostMessage(this.hWnd, WinApi.WM_IME_CHAR, (long)code, IntPtr.Zero);
         }
-        #endregion
+#endregion
 
-        #region ファイルドロップ関連
+#region ファイルドロップ関連
         /// <summary>
         /// ファイルドロップ時に発生するイベント
         /// </summary>
@@ -950,9 +1026,9 @@ namespace Kirurobo
             RestoreWindowState();
         }
 
-        #endregion
+#endregion
 
-        #region File open dialog
+#region File open dialog
 
         public string ShowOpenFileDialog(string filter = "All files|*.*")
         {
@@ -980,7 +1056,7 @@ namespace Kirurobo
             }
             return null;
         }
-        #endregion
+#endregion
     }
 
 }

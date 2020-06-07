@@ -40,78 +40,146 @@ namespace Kirurobo
         {
             base.OnInspectorGUI();
 
-            // 推奨設定のチェック
-            if (!isWarningDismissed)
+            EditorGUILayout.Space();
+
+            bool enableValidation = EditorGUILayout.Foldout(!isWarningDismissed, "Player Settings validation");
+
+            // チェックするかどうかを記憶
+            if (enableValidation == isWarningDismissed)
             {
-                // 自動調整ボタンを表示させるならtrueとなる
-                bool showButton = false;
-
-                if (!PlayerSettings.runInBackground)
-                {
-                    EditorGUILayout.HelpBox("'Run in background' is recommended.", MessageType.Warning);
-                    showButton = true;
-                }
-
-                if (!PlayerSettings.resizableWindow)
-                {
-                    EditorGUILayout.HelpBox("'Resizable window' is recommended.", MessageType.Warning);
-                    showButton = true;
-                }
-
-#if UNITY_2018_1_OR_NEWER
-        if (PlayerSettings.fullScreenMode != FullScreenMode.Windowed)
-        {
-            EditorGUILayout.HelpBox("It is recommmended to select 'Windowed' in fullscreen mode.", MessageType.Warning);
-            showButton = true;
-        }
-
-        if (showButton)
-        {
-            GUI.backgroundColor = Color.green;
-            if (GUILayout.Button("Apply all recommended settings"))
-            {
-                PlayerSettings.runInBackground = true;
-                PlayerSettings.resizableWindow = true;
-                PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+                isWarningDismissed = !enableValidation;
             }
-        }
-#else
-                if (PlayerSettings.defaultIsFullScreen)
-                {
-                    EditorGUILayout.HelpBox("'Default is full screen' is not recommended.", MessageType.Warning);
-                    showButton = true;
-                }
+
+            // 推奨設定のチェック
+            //if (!isWarningDismissed)
+            if (enableValidation)
+            {
+                // Player Settings をチェックし、非推奨があれば警告メッセージを得る
+                string[] warnings = ValidatePlayerSettings();
 
                 //  チェックに引っかかればボタンを表示
-                if (showButton)
+                if (warnings.Length > 0)
                 {
+
+                    // 枠を作成
+                    //EditorGUILayout.BeginVertical(GUI.skin.box);
+                    //GUILayout.Label("Player Settings validation");
+
+                    // 警告メッセージを表示
+                    foreach (var message in warnings)
+                    {
+                        EditorGUILayout.HelpBox(message, MessageType.Warning);
+                    }
+
+                    // 推奨設定をすべて適用するボタン
                     GUI.backgroundColor = Color.green;
                     if (
                         GUILayout.Button(
                             "✔ Apply all recommended settings",
-                            GUILayout.MinHeight(30f)
+                            GUILayout.MinHeight(20f)
                         ))
                     {
-                        PlayerSettings.runInBackground = true;
-                        PlayerSettings.resizableWindow = true;
-                        PlayerSettings.defaultIsFullScreen = false;
+                        ApplyRecommendedSettings();
                     }
 
+                    // チェックを今後無視するボタン
                     GUI.backgroundColor = Color.red;
                     if (
                         GUILayout.Button(
-                            "✘ Dismiss this validation",
-                            GUILayout.MinHeight(30f)
+                            "✘ Mute this validation",
+                            GUILayout.MinHeight(20f)
                         ))
                     {
                         isWarningDismissed = true;
                         //SaveSettings();
                     }
 
-                    EditorGUILayout.Space();
+                    //EditorGUILayout.EndVertical();
                 }
-#endif
+                else
+                {
+                    GUI.color = Color.green;
+                    GUILayout.Label("OK!");
+                }
             }
+        }
+
+        /// <summary>
+        /// Player設定を確認し、推奨設定になっていない項目のメッセージ一覧を得る
+        /// </summary>
+        /// <returns></returns>
+        private string[] ValidatePlayerSettings()
+        {
+            // 警告メッセージのリスト
+            List<string> warnings = new List<string>();
+
+            if (!PlayerSettings.runInBackground)
+            {
+                warnings.Add("'Run in background' is highly recommended.");
+            }
+
+            if (!PlayerSettings.resizableWindow)
+            {
+                warnings.Add("'Resizable window' is recommended.");
+            }
+
+#if UNITY_2018_1_OR_NEWER
+            // Unity 2018 からはフルスクリーン指定の仕様が変わった
+            if (PlayerSettings.fullScreenMode != FullScreenMode.Windowed)
+            {
+                warnings.Add("Chose 'Windowed' in 'Fullscreen Mode'.");
+            }
+#else
+            if (PlayerSettings.defaultIsFullScreen)
+            {
+                warnings.Add("'Default is full screen' is not recommended.");
+            }
+#endif
+
+            // ↓Unity 2019.1.6未満だと useFlipModelSwapchain は無いはず
+            //    なので除外のため書き連ねてあるが、ここまでサポートしなくて良い気もする。
+#if UNITY_2019_1_6
+#elif UNITY_2019_1_5
+#elif UNITY_2019_1_4
+#elif UNITY_2019_1_3
+#elif UNITY_2019_1_2
+#elif UNITY_2019_1_1
+#elif UNITY_2019_1_0
+#elif UNITY_2019_1_OR_NEWER
+            // Unity 2019.1.7 以降であれば、Player 設定 の Use DXGI Flip... 無効化を推奨
+            if (PlayerSettings.useFlipModelSwapchain)
+            {
+                warnings.Add("Disable 'Use DXGI Flip Mode Swapchain' to make the window transparent.");
+            }
+#endif
+
+            return warnings.ToArray();
+        }
+
+        /// <summary>
+        /// 推奨設定を一括で適用
+        /// </summary>
+        private void ApplyRecommendedSettings()
+        {
+#if UNITY_2018_1_OR_NEWER
+            PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+#else
+            PlayerSettings.defaultIsFullScreen = false;
+#endif
+            PlayerSettings.runInBackground = true;
+            PlayerSettings.resizableWindow = true;
+
+#if UNITY_2019_1_6
+#elif UNITY_2019_1_5
+#elif UNITY_2019_1_4
+#elif UNITY_2019_1_3
+#elif UNITY_2019_1_2
+#elif UNITY_2019_1_1
+#elif UNITY_2019_1_0
+#elif UNITY_2019_1_OR_NEWER
+            PlayerSettings.useFlipModelSwapchain = false;
+#endif
+
         }
 
         // 参考 http://baba-s.hatenablog.com/entry/2017/09/17/135018
