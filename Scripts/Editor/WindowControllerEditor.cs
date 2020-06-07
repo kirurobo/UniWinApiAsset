@@ -149,7 +149,7 @@ namespace Kirurobo
             // Unity 2019.1.7 以降であれば、Player 設定 の Use DXGI Flip... 無効化を推奨
             if (PlayerSettings.useFlipModelSwapchain)
             {
-                warnings.Add("Disable 'Use DXGI Flip Mode Swapchain' to make the window transparent.");
+                warnings.Add("Disable 'Use DXGI Flip Model Swapchain' to make the window transparent.");
             }
 #endif
 

@@ -18,7 +18,7 @@ This asset is designed to provide functions which enable your Unity application 
 
 ## Confirmed environment
 
-* Unity 5.6.6f2, Unity 2018.2.20f1
+* Unity 2018.4.20f1, Unity 2019.2.18f
 * Windows 10 Pro x64
 * GeForce GTX980, GeForce GTX 1070
 
@@ -88,6 +88,7 @@ However, there is no operation guarantee.
 
 ## Change log
 
+* 2020/06/07 Support Unity 2019. Add layered winodow method
 * 2019/01/23 Add file open dialog. Return the way to acquire self window to be active window standard
 * 2018/12/28 Add namespace, Modify the way to acquire self window to be PID standard
 * 2018/12/07 Separate the asset part of UniWinApi
@@ -119,7 +120,7 @@ However, there is no operation guarantee.
 
 ## 確認済み動作環境
 
-* Unity 5.6.6f2, Unity 2018.2.20f1
+* Unity 2018.4.20f1, Unity 2019.2.18f
 * Windows 10 Pro x64
 * GeForce GTX980, GeForce GTX 1070
 
@@ -183,6 +184,7 @@ UniWinApi は、CC0（パブリックドメイン）としています。
 
 ## 更新履歴
 
+* 2020/06/07 Unity 2019 対応。Layered Window による透過モードを追加。
 * 2019/01/23 ファイルオープンダイアログ追加。自ウィンドウ取得方法をアクティブウィンドウ基準に戻した。
 * 2018/12/28 namespaceを設定、自ウィンドウ取得をPIDを基準とする方法に修正
 * 2018/12/07 UniWinApiのアセット部分を分離

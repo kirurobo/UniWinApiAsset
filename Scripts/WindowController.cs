@@ -152,13 +152,13 @@ namespace Kirurobo
         /// <summary>
         /// 描画の上にタッチがあればそのfingerIdが入る
         /// </summary>
-        [SerializeField]
+        //[SerializeField]
         private int activeFingerId = -1;
 
         /// <summary>
         /// 最後のドラッグはマウスによるものか、タッチによるものか
         /// </summary>
-        [SerializeField]
+        //[SerializeField]
         private bool wasUsingMouse;
 
         /// <summary>
