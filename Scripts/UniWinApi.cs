@@ -155,7 +155,7 @@ namespace Kirurobo
         /// <summary>
         /// ウィンドウ透過方式
         /// </summary>
-        public TransparentType TransparentMode = TransparentType.DWM;
+        public TransparentType TransparentMethod = TransparentType.DWM;
         private TransparentType currentTransparentType = TransparentType.DWM;
 
         /// <summary>
@@ -539,7 +539,7 @@ namespace Kirurobo
                 // 枠無しウィンドウにする
                 EnableBorderless(true);
 
-                switch (TransparentMode)
+                switch (TransparentMethod)
                 {
                     case TransparentType.DWM:
                         EnableTransparentByDWM();
@@ -569,7 +569,7 @@ namespace Kirurobo
                 EnableClickThrough(false);
             }
 
-            currentTransparentType = TransparentMode;
+            currentTransparentType = TransparentMethod;
 
             // サイズ変更イベントを発生させる
             SetSize(GetSize());

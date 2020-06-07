@@ -116,7 +116,7 @@ namespace Kirurobo
         /// <summary>
         /// 透過方式の指定
         /// </summary>
-        public UniWinApi.TransparentType transparentType = UniWinApi.TransparentType.DWM;
+        public UniWinApi.TransparentType transparentMethod = UniWinApi.TransparentType.DWM;
 
         // カメラの背景をアルファゼロの黒に置き換えるため、本来の背景を保存しておく変数
         private CameraClearFlags originalCameraClearFlags;
@@ -232,7 +232,7 @@ namespace Kirurobo
             uniWin = new UniWinApi();
 
             // 透過方式の指定
-            uniWin.TransparentMode = transparentType;
+            uniWin.TransparentMethod = transparentMethod;
 
             // 自分のウィンドウを取得
             FindMyWindow();
@@ -276,27 +276,6 @@ namespace Kirurobo
             // キー、マウス操作の下ウィンドウへの透過状態を更新
             UpdateClickThrough();
 
-
-            // デバッグ用
-            if (uniWin != null)
-            {
-                // [Ctrl]+[T] で透過方式を変更
-                if (Input.GetKeyDown(KeyCode.T) && Input.GetKey(KeyCode.LeftControl))
-                {
-                    //Debug.Log(Screen.width + " : " + Screen.height);
-                    //uniWin.SetPosition(Vector2.zero);
-
-                    // 透過モード入れ替え
-                    if (uniWin.TransparentMode == UniWinApi.TransparentType.LayereredWindows)
-                    {
-                        uniWin.TransparentMode = UniWinApi.TransparentType.DWM;
-                    } else
-                    {
-                        uniWin.TransparentMode = UniWinApi.TransparentType.LayereredWindows;
-                    }
-                    transparentType = uniWin.TransparentMode;
-                }
-            }
 
             // ウィンドウ枠が復活している場合があるので監視するため、呼ぶ
             if (uniWin != null)
@@ -646,7 +625,7 @@ namespace Kirurobo
             if (isTransparent)
             {
                 currentCamera.clearFlags = CameraClearFlags.SolidColor;
-                if (uniWin.TransparentMode == UniWinApi.TransparentType.LayereredWindows)
+                if (uniWin.TransparentMethod == UniWinApi.TransparentType.LayereredWindows)
                 {
                     currentCamera.backgroundColor = uniWin.ChromakeyColor;
                 }
@@ -679,6 +658,26 @@ namespace Kirurobo
             }
             UpdateClickThrough();
             StateChangedEvent();
+        }
+
+        /// <summary>
+        /// 透明化方式を設定
+        /// </summary>
+        /// <param name="method"></param>
+        public void SetTransparentMethod(UniWinApi.TransparentType method)
+        {
+            //Debug.Log(Screen.width + " : " + Screen.height);
+            //uniWin.SetPosition(Vector2.zero);
+
+            // 透過モード変更
+            uniWin.TransparentMethod = method;
+            transparentMethod = uniWin.TransparentMethod;
+            if (isTransparent)
+            {
+                // 透明化状態だったならば再度透明化を設定し直す
+                uniWin.EnableTransparent(false);
+                uniWin.EnableTransparent(true);
+            }
         }
 
         /// <summary>
