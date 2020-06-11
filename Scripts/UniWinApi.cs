@@ -108,8 +108,8 @@ namespace Kirurobo
         public enum TransparentType
         {
             None = 0,
-            DWM = 1,
-            LayereredWindows = 2,
+            Alpha = 1,
+            ColorKey = 2,
         }
 
 
@@ -155,8 +155,8 @@ namespace Kirurobo
         /// <summary>
         /// ウィンドウ透過方式
         /// </summary>
-        public TransparentType TransparentMethod = TransparentType.DWM;
-        private TransparentType currentTransparentType = TransparentType.DWM;
+        public TransparentType TransparentMethod = TransparentType.Alpha;
+        private TransparentType _currentTransparentType = TransparentType.Alpha;
 
         /// <summary>
         /// Layered Windows で透過する色
@@ -541,10 +541,10 @@ namespace Kirurobo
 
                 switch (TransparentMethod)
                 {
-                    case TransparentType.DWM:
+                    case TransparentType.Alpha:
                         EnableTransparentByDWM();
                         break;
-                    case TransparentType.LayereredWindows:
+                    case TransparentType.ColorKey:
                         EnableTransparentBySetLayered();
                         break;
                 }
@@ -552,12 +552,12 @@ namespace Kirurobo
             else
             {
                 // 現在の指定ではなく、透過にした時点の指定に基づいて無効化
-                switch (currentTransparentType)
+                switch (_currentTransparentType)
                 {
-                    case TransparentType.DWM:
+                    case TransparentType.Alpha:
                         DisableTransparentByDWM();
                         break;
-                    case TransparentType.LayereredWindows:
+                    case TransparentType.ColorKey:
                         DisableTransparentBySetLayered();
                         break;
                 }
@@ -569,7 +569,7 @@ namespace Kirurobo
                 EnableClickThrough(false);
             }
 
-            currentTransparentType = TransparentMethod;
+            _currentTransparentType = TransparentMethod;
 
             // サイズ変更イベントを発生させる
             SetSize(GetSize());
@@ -666,7 +666,7 @@ namespace Kirurobo
             if (!IsActive) return;
 
             // Layered Window での透過時は、操作透過はOSで行われる
-            if (currentTransparentType == TransparentType.LayereredWindows) return;
+            if (_currentTransparentType == TransparentType.ColorKey) return;
 
 #if UNITY_EDITOR
             // エディタの場合は操作の透過はやめておく
