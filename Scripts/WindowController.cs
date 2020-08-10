@@ -5,9 +5,11 @@
  * License: CC0 https://creativecommons.org/publicdomain/zero/1.0/
  */
 
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 #if UNITY_EDITOR
 using UnityEditor;
 using System.Reflection;
@@ -64,7 +66,7 @@ namespace Kirurobo
         /// </summary>
         public bool isTopmost
         {
-            get { return ((uniWin == null) ? _isTopmost : _isTopmost = uniWin.IsTopmost); }
+            get { return ((uniWin == null || !uniWin.IsActive) ? _isTopmost : _isTopmost = uniWin.IsTopmost); }
             set { SetTopmost(value); }
         }
         [SerializeField, BoolProperty, Tooltip("Check to set topmost on startup")]
@@ -75,7 +77,7 @@ namespace Kirurobo
         /// </summary>
         public bool isMaximized
         {
-            get { return ((uniWin == null) ? _isMaximized : _isMaximized = uniWin.IsMaximized); }
+            get { return ((uniWin == null || !uniWin.IsActive) ? _isMaximized : _isMaximized = uniWin.IsMaximized); }
             set { SetMaximized(value); }
         }
         [SerializeField, BoolProperty, Tooltip("Check to set maximized on startup")]
@@ -86,12 +88,16 @@ namespace Kirurobo
         /// </summary>
         public bool isMinimized
         {
-            get { return ((uniWin == null) ? _isMinimized : _isMinimized = uniWin.IsMinimized); }
+            get { return ((uniWin == null || !uniWin.IsActive) ? _isMinimized : _isMinimized = uniWin.IsMinimized); }
             set { SetMinimized(value); }
         }
         [SerializeField, BoolProperty, Tooltip("Check to set minimized on startup")]
         private bool _isMinimized = false;
 
+        private bool isInitiallyTopmost;
+        private bool isInitiallyMaximized;
+        private bool isInitiallyMinimized;
+        
         /// <summary>
         /// ファイルドロップを有効にするならば最初からtrueにしておく
         /// </summary>
@@ -116,7 +122,7 @@ namespace Kirurobo
         /// <summary>
         /// 透過方式の指定
         /// </summary>
-        public UniWinApi.TransparentType transparentMethod = UniWinApi.TransparentType.DWM;
+        [FormerlySerializedAs("transparentMethod")] public UniWinApi.TransparentTypes transparentType = UniWinApi.TransparentTypes.Alpha;
 
         // カメラの背景をアルファゼロの黒に置き換えるため、本来の背景を保存しておく変数
         private CameraClearFlags originalCameraClearFlags;
@@ -132,6 +138,15 @@ namespace Kirurobo
         /// The cut off threshold of alpha value.
         /// </summary>
         private float opaqueThreshold = 0.1f;
+
+        /// <summary>
+        /// The key color when the transparent type is color-key
+        /// </summary>
+        public Color32 keyColor
+        {
+            get { return (uniWin != null) ? uniWin.ChromakeyColor : new Color32(1, 0, 1, 0); }
+            set { if (uniWin != null) { uniWin.ChromakeyColor = value; } }
+        }
 
         /// <summary>
         /// Pixel color under the mouse pointer. (Read only)
@@ -177,7 +192,6 @@ namespace Kirurobo
         /// </summary>
         private Touch? firstTouch = null;
 
-
         /// <summary>
         /// ファイルドロップ時のイベントハンドラー。 UniWinApiの OnFilesDropped にそのまま渡す。
         /// </summary>
@@ -202,6 +216,11 @@ namespace Kirurobo
         // Use this for initialization
         void Awake()
         {
+            // ウィンドウが準備できたタイミングで初期値を設定できるよう保存しておく
+            isInitiallyTopmost = _isTopmost;
+            isInitiallyMaximized = _isMaximized;
+            isInitiallyMinimized = _isMinimized;
+            
             Input.simulateMouseWithTouches = false;
 
             if (!currentCamera)
@@ -232,8 +251,8 @@ namespace Kirurobo
             uniWin = new UniWinApi();
 
             // 透過方式の指定
-            uniWin.TransparentMethod = transparentMethod;
-
+            uniWin.TransparentType = transparentType;
+            
             // 自分のウィンドウを取得
             FindMyWindow();
 #endif
@@ -250,6 +269,9 @@ namespace Kirurobo
         {
             // マウスカーソル直下の色を取得するコルーチンを開始
             StartCoroutine(PickColorCoroutine());
+            
+            // エディタの場合、ウィンドウの準備ができるまで時間がかかるようなのでコルーチンで最大化などの初期状態を設定してみる
+            StartCoroutine((ApplyInitialStyle()));
         }
 
         void OnDestroy()
@@ -281,6 +303,26 @@ namespace Kirurobo
             if (uniWin != null)
             {
                 uniWin.Update();
+
+                // 最小化は外部要因で解除されがちなのでチェック
+                bool stateChanged = false;
+                if (_isMinimized != uniWin.IsMinimized)
+                {
+                    _isMinimized = uniWin.IsMinimized;
+                    stateChanged = true;
+                }
+
+                // 最大化もチェック
+                if (_isMaximized != uniWin.IsMaximized)
+                {
+                    _isMaximized = uniWin.IsMaximized;
+                    stateChanged = true;
+                }
+
+                if (stateChanged)
+                {
+                    StateChangedEvent();
+                }
             }
         }
 
@@ -521,7 +563,7 @@ namespace Kirurobo
             if (!_isTransparent) return true;
 
             // LayeredWindowならばクリックスルーはOSに任せるため、ウィンドウ内ならtrueを返しておく
-            if (transparentMethod == UniWinApi.TransparentType.LayereredWindows) return true;
+            if (transparentType == UniWinApi.TransparentTypes.ColorKey) return true;
 
             // 指定座標の描画結果を見て判断
             try   // WaitForEndOfFrame のタイミングで実行すればtryは無くても大丈夫？
@@ -560,12 +602,37 @@ namespace Kirurobo
             // 見つかったウィンドウを利用開始
             uniWin.SetWindow(window);
 
-            // 初期状態を反映
-            SetTopmost(_isTopmost);
-            SetMaximized(_isMaximized);
-            SetMinimized(_isMinimized);
+            // // 初期設定を反映
+            // SetTopmost(_isTopmost);
+            // SetMaximized(_isMaximized);
+            // SetMinimized(_isMinimized);
+            SetTopmost(isInitiallyTopmost);
+            SetMaximized(isInitiallyMaximized);
+            SetMinimized(isInitiallyMinimized);
+            
             SetTransparent(_isTransparent);
             if (_enableFileDrop) BeginFileDrop();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        IEnumerator ApplyInitialStyle()
+        {
+            // ウインドウの準備ができるまで待つ
+            while (uniWin == null)
+            {
+                yield return null;
+            }
+
+            // さらに1フレーム待つ
+            yield return null;
+
+            // 初期値を設定
+            SetTopmost(isInitiallyTopmost);
+            SetMaximized(isInitiallyMaximized);
+            SetMinimized(isInitiallyMinimized);
         }
 
         /// <summary>
@@ -628,7 +695,7 @@ namespace Kirurobo
             if (isTransparent)
             {
                 currentCamera.clearFlags = CameraClearFlags.SolidColor;
-                if (uniWin.TransparentMethod == UniWinApi.TransparentType.LayereredWindows)
+                if (uniWin.TransparentType == UniWinApi.TransparentTypes.ColorKey)
                 {
                     currentCamera.backgroundColor = uniWin.ChromakeyColor;
                 }
@@ -647,17 +714,17 @@ namespace Kirurobo
         /// <summary>
         /// 透明化状態を切替
         /// </summary>
-        /// <param name="transparent"></param>
-        public void SetTransparent(bool transparent)
+        /// <param name="enabled"></param>
+        public void SetTransparent(bool enabled)
         {
             //if (_isTransparent == transparent) return;
 
-            _isTransparent = transparent;
-            SetCameraBackground(transparent);
+            _isTransparent = enabled;
+            SetCameraBackground(enabled);
 
             if (uniWin != null)
             {
-                uniWin.EnableTransparent(transparent);
+                uniWin.EnableTransparent(enabled);
             }
             UpdateClickThrough();
             StateChangedEvent();
@@ -666,15 +733,15 @@ namespace Kirurobo
         /// <summary>
         /// 透明化方式を設定
         /// </summary>
-        /// <param name="method"></param>
-        public void SetTransparentMethod(UniWinApi.TransparentType method)
+        /// <param name="type"></param>
+        public void SetTransparentType(UniWinApi.TransparentTypes type)
         {
             //Debug.Log(Screen.width + " : " + Screen.height);
             //uniWin.SetPosition(Vector2.zero);
 
             // 透過モード変更
-            uniWin.TransparentMethod = method;
-            transparentMethod = uniWin.TransparentMethod;
+            uniWin.TransparentType = type;
+            transparentType = uniWin.TransparentType;
             if (isTransparent)
             {
                 // 透明化状態だったならば再度透明化を設定し直す

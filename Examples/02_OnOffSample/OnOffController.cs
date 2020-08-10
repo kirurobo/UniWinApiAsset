@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,6 +13,7 @@ namespace Kirurobo
     {
         WindowController windowController;
 
+        public Dropdown transparentTypeDropdown;
         public Toggle transparentToggle;
         public Toggle topmostToggle;
         public Toggle maximizedToggle;
@@ -19,6 +21,15 @@ namespace Kirurobo
         public Toggle enableFileDropToggle;
         public Text droppedFilesText;
 
+        // ドロップダウンの選択肢順に合わせる
+        private Dictionary<int, UniWinApi.TransparentTypes> _transparentTypes =
+            new Dictionary<int, UniWinApi.TransparentTypes>()
+            {
+                {0, UniWinApi.TransparentTypes.None},
+                {1, UniWinApi.TransparentTypes.Alpha},
+                {2, UniWinApi.TransparentTypes.ColorKey},
+            };
+        
         // Use this for initialization
         void Start()
         {
@@ -35,10 +46,21 @@ namespace Kirurobo
                 }
             };
 
+            // ウィンドウ状態が変化した際にはUIも一致するよう更新
+            windowController.OnStateChanged += () => { UpdateUI(); };
+
             // Toggleのチェック状態を、現在の状態に合わせる
             UpdateUI();
 
             // Toggleを操作された際にはウィンドウに反映されるようにする
+            if (transparentTypeDropdown)
+            {
+                // 初期値を選択
+                transparentTypeDropdown.value =
+                    _transparentTypes.First(d => d.Value == windowController.transparentType).Key;
+                
+                transparentTypeDropdown.onValueChanged.AddListener(val => windowController.SetTransparentType(_transparentTypes[val]));
+            }
             if (transparentToggle)
             {
                 transparentToggle.onValueChanged.AddListener(val => windowController.isTransparent = val);
