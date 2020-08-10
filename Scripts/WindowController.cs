@@ -122,7 +122,7 @@ namespace Kirurobo
         /// <summary>
         /// 透過方式の指定
         /// </summary>
-        [FormerlySerializedAs("transparentMethod")] public UniWinApi.TransparentType transparentType = UniWinApi.TransparentType.Alpha;
+        [FormerlySerializedAs("transparentMethod")] public UniWinApi.TransparentTypes transparentType = UniWinApi.TransparentTypes.Alpha;
 
         // カメラの背景をアルファゼロの黒に置き換えるため、本来の背景を保存しておく変数
         private CameraClearFlags originalCameraClearFlags;
@@ -138,6 +138,15 @@ namespace Kirurobo
         /// The cut off threshold of alpha value.
         /// </summary>
         private float opaqueThreshold = 0.1f;
+
+        /// <summary>
+        /// The key color when the transparent type is color-key
+        /// </summary>
+        public Color32 keyColor
+        {
+            get { return (uniWin != null) ? uniWin.ChromakeyColor : new Color32(1, 0, 1, 0); }
+            set { if (uniWin != null) { uniWin.ChromakeyColor = value; } }
+        }
 
         /// <summary>
         /// Pixel color under the mouse pointer. (Read only)
@@ -242,8 +251,8 @@ namespace Kirurobo
             uniWin = new UniWinApi();
 
             // 透過方式の指定
-            uniWin.TransparentMethod = transparentType;
-
+            uniWin.TransparentType = transparentType;
+            
             // 自分のウィンドウを取得
             FindMyWindow();
 #endif
@@ -294,6 +303,26 @@ namespace Kirurobo
             if (uniWin != null)
             {
                 uniWin.Update();
+
+                // 最小化は外部要因で解除されがちなのでチェック
+                bool stateChanged = false;
+                if (_isMinimized != uniWin.IsMinimized)
+                {
+                    _isMinimized = uniWin.IsMinimized;
+                    stateChanged = true;
+                }
+
+                // 最大化もチェック
+                if (_isMaximized != uniWin.IsMaximized)
+                {
+                    _isMaximized = uniWin.IsMaximized;
+                    stateChanged = true;
+                }
+
+                if (stateChanged)
+                {
+                    StateChangedEvent();
+                }
             }
         }
 
@@ -534,7 +563,7 @@ namespace Kirurobo
             if (!_isTransparent) return true;
 
             // LayeredWindowならばクリックスルーはOSに任せるため、ウィンドウ内ならtrueを返しておく
-            if (transparentType == UniWinApi.TransparentType.ColorKey) return true;
+            if (transparentType == UniWinApi.TransparentTypes.ColorKey) return true;
 
             // 指定座標の描画結果を見て判断
             try   // WaitForEndOfFrame のタイミングで実行すればtryは無くても大丈夫？
@@ -666,7 +695,7 @@ namespace Kirurobo
             if (isTransparent)
             {
                 currentCamera.clearFlags = CameraClearFlags.SolidColor;
-                if (uniWin.TransparentMethod == UniWinApi.TransparentType.ColorKey)
+                if (uniWin.TransparentType == UniWinApi.TransparentTypes.ColorKey)
                 {
                     currentCamera.backgroundColor = uniWin.ChromakeyColor;
                 }
@@ -685,17 +714,17 @@ namespace Kirurobo
         /// <summary>
         /// 透明化状態を切替
         /// </summary>
-        /// <param name="transparent"></param>
-        public void SetTransparent(bool transparent)
+        /// <param name="enabled"></param>
+        public void SetTransparent(bool enabled)
         {
             //if (_isTransparent == transparent) return;
 
-            _isTransparent = transparent;
-            SetCameraBackground(transparent);
+            _isTransparent = enabled;
+            SetCameraBackground(enabled);
 
             if (uniWin != null)
             {
-                uniWin.EnableTransparent(transparent);
+                uniWin.EnableTransparent(enabled);
             }
             UpdateClickThrough();
             StateChangedEvent();
@@ -704,15 +733,15 @@ namespace Kirurobo
         /// <summary>
         /// 透明化方式を設定
         /// </summary>
-        /// <param name="method"></param>
-        public void SetTransparentMethod(UniWinApi.TransparentType method)
+        /// <param name="type"></param>
+        public void SetTransparentType(UniWinApi.TransparentTypes type)
         {
             //Debug.Log(Screen.width + " : " + Screen.height);
             //uniWin.SetPosition(Vector2.zero);
 
             // 透過モード変更
-            uniWin.TransparentMethod = method;
-            transparentType = uniWin.TransparentMethod;
+            uniWin.TransparentType = type;
+            transparentType = uniWin.TransparentType;
             if (isTransparent)
             {
                 // 透明化状態だったならば再度透明化を設定し直す

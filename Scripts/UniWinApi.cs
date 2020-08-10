@@ -65,9 +65,9 @@ namespace Kirurobo
 
 
                 // プロセスIDを取得
-                IntPtr pid;
+                long pid;
                 WinApi.GetWindowThreadProcessId(hWnd, out pid);     // IL2CPP かつ x86 だとクラッシュ？
-                ProcessId = pid.ToInt32();
+                ProcessId = (int)pid;
 
 #if ENABLE_IL2CPP
                 // プロセス名を取得
@@ -105,7 +105,7 @@ namespace Kirurobo
         /// <summary>
         /// 透明化の方式
         /// </summary>
-        public enum TransparentType
+        public enum TransparentTypes
         {
             None = 0,
             Alpha = 1,
@@ -155,8 +155,8 @@ namespace Kirurobo
         /// <summary>
         /// ウィンドウ透過方式
         /// </summary>
-        public TransparentType TransparentMethod = TransparentType.Alpha;
-        private TransparentType _currentTransparentType = TransparentType.Alpha;
+        public TransparentTypes TransparentType = TransparentTypes.Alpha;
+        private TransparentTypes _currentTransparentType = TransparentTypes.Alpha;
 
         /// <summary>
         /// Layered Windows で透過する色
@@ -275,9 +275,40 @@ namespace Kirurobo
                 IntPtr.Zero,
                 0, 0, (int)size.x, (int)size.y,
                 WinApi.SWP_NOMOVE | WinApi.SWP_NOZORDER
+                                  | WinApi.SWP_FRAMECHANGED | WinApi.SWP_NOOWNERZORDER
+                                  | WinApi.SWP_NOACTIVATE | WinApi.SWP_ASYNCWINDOWPOS
+            );
+        }
+
+        /// <summary>
+        /// Send window resize event.
+        /// </summary>
+        protected void ResetSize()
+        {
+            if (!IsActive) return;
+
+            // 今のサイズを記憶
+            Vector2 size = GetSize();
+            
+            // 1px横幅を広げて、リサイズイベントを強制的に起こす
+            WinApi.SetWindowPos(
+                hWnd,
+                IntPtr.Zero,
+                0, 0, (int)size.x + 1, (int)size.y,
+                WinApi.SWP_NOMOVE | WinApi.SWP_NOZORDER
                 | WinApi.SWP_FRAMECHANGED | WinApi.SWP_NOOWNERZORDER
                 | WinApi.SWP_NOACTIVATE | WinApi.SWP_ASYNCWINDOWPOS
                 );
+            
+            // 元のサイズに戻す。この時もリサイズイベントは発生するはず
+            WinApi.SetWindowPos(
+                hWnd,
+                IntPtr.Zero,
+                0, 0, (int)size.x, (int)size.y,
+                WinApi.SWP_NOMOVE | WinApi.SWP_NOZORDER
+                                  | WinApi.SWP_FRAMECHANGED | WinApi.SWP_NOOWNERZORDER
+                                  | WinApi.SWP_NOACTIVATE | WinApi.SWP_ASYNCWINDOWPOS
+            );
         }
 
         /// <summary>
@@ -451,7 +482,7 @@ namespace Kirurobo
         }
 
         [MonoPInvokeCallback(typeof(WinApi.EnumWindowsDelegate))]
-        private static bool EnumCallback(IntPtr hWnd, IntPtr lParam)
+        private static bool EnumCallback(IntPtr hWnd, long lParam)
         {
             hWndList.Add(hWnd);
             return true;
@@ -503,6 +534,7 @@ namespace Kirurobo
 
         /// <summary>
         /// ウィンドウスタイルを監視して、替わっていれば戻す
+        /// また変化があればTrueを返す
         /// </summary>
         public void Update()
         {
@@ -539,12 +571,12 @@ namespace Kirurobo
                 // 枠無しウィンドウにする
                 EnableBorderless(true);
 
-                switch (TransparentMethod)
+                switch (TransparentType)
                 {
-                    case TransparentType.Alpha:
+                    case TransparentTypes.Alpha:
                         EnableTransparentByDWM();
                         break;
-                    case TransparentType.ColorKey:
+                    case TransparentTypes.ColorKey:
                         EnableTransparentBySetLayered();
                         break;
                 }
@@ -554,10 +586,10 @@ namespace Kirurobo
                 // 現在の指定ではなく、透過にした時点の指定に基づいて無効化
                 switch (_currentTransparentType)
                 {
-                    case TransparentType.Alpha:
+                    case TransparentTypes.Alpha:
                         DisableTransparentByDWM();
                         break;
-                    case TransparentType.ColorKey:
+                    case TransparentTypes.ColorKey:
                         DisableTransparentBySetLayered();
                         break;
                 }
@@ -569,10 +601,10 @@ namespace Kirurobo
                 EnableClickThrough(false);
             }
 
-            _currentTransparentType = TransparentMethod;
+            _currentTransparentType = TransparentType;
 
-            // サイズ変更イベントを発生させる
-            SetSize(GetSize());
+            // ウィンドウ枠の分サイズが変わった際、Unityにリサイズイベントを発生させないとサイズがずれる
+            ResetSize();
 
             // ウィンドウ再描画
             WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
@@ -589,7 +621,7 @@ namespace Kirurobo
             // 枠のみGlassにする
             //	※ 本来のウィンドウが何らかの範囲指定でGlassにしていた場合は、残念ながら表示が戻りません
             DwmApi.MARGINS margins = new DwmApi.MARGINS(0, 0, 0, 0);
-            DwmApi.DwmExtendFrameIntoClientArea(hWnd, margins);
+            DwmApi.DwmExtendFrameIntoClientArea(hWnd, ref margins);
         }
 
         /// <summary>
@@ -600,14 +632,14 @@ namespace Kirurobo
 #if UNITY_EDITOR
             // エディタの場合、設定すると描画が更新されなくなってしまう
 #else
-            Color32 color32 = ChromakeyColor;
-            WinApi.COLORREF cref = new WinApi.COLORREF(color32.r, color32.g, color32.b);
-            WinApi.SetLayeredWindowAttributes(hWnd, cref, 0xFF, WinApi.LWA_COLORKEY);
-
             long exstyle = this.CurrentWindowExStyle;
             exstyle |= WinApi.WS_EX_LAYERED;
             this.CurrentWindowExStyle = exstyle;
             WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
+
+            Color32 color32 = ChromakeyColor;
+            WinApi.COLORREF cref = new WinApi.COLORREF(color32.r, color32.g, color32.b);
+            WinApi.SetLayeredWindowAttributes(hWnd, cref, 0xFF, WinApi.LWA_COLORKEY);
 #endif
         }
 
@@ -620,7 +652,7 @@ namespace Kirurobo
             // エディタの場合、設定すると描画が更新されなくなってしまう
 #else
             WinApi.COLORREF cref = new WinApi.COLORREF(0, 0, 0);
-            WinApi.SetLayeredWindowAttributes(hWnd, cref, 0xFF, 0x00);
+            WinApi.SetLayeredWindowAttributes(hWnd, cref, 0xFF, WinApi.LWA_ALPHA);
 
             long exstyle = this.CurrentWindowExStyle;
             exstyle &= ~WinApi.WS_EX_LAYERED;
@@ -666,7 +698,7 @@ namespace Kirurobo
             if (!IsActive) return;
 
             // Layered Window での透過時は、操作透過はOSで行われる
-            if (_currentTransparentType == TransparentType.ColorKey) return;
+            if (_currentTransparentType == TransparentTypes.ColorKey) return;
 
 #if UNITY_EDITOR
             // エディタの場合は操作の透過はやめておく

@@ -59,17 +59,34 @@ If you use file dropping, there is the event named `OnFilesDropped(string[] file
 
 I'm sorry that the document hasn't prepared. Please read the sample project (^-^;
 
+
 ## Attention
 
 - Since I haven't known how to get window handle certainly, rarely you might operate with another window.
   - (On the other hand, you can designate and operate other windows)
 - You might be forced to down the application if the window lost the "Close" button or if you cannot see the window since the window goes to somewhere.
 
+
+## About transparent types
+
+- Alpha
+  - Alpha channel is enabled.
+  - If you use touch instead of a mouse, hit testing may cause discomfort.
+  - Internally, this library uses DWM (Desktop Window Manager) APIs.
+- ColorKey
+  - Only one color you specify will be transparent.
+  - Hit testing is natural for touch. 
+  - The key color can be specified in WindowController.keyColor.
+    - The default color is 0x010001.
+  - Internally, this library uses the layered window.
+
 ## FAQ
+
 - The transparent application looks false on Editor
   - This is because of the specification. You have to build to confirm the transparent appearance.
   - You cannot let the Game window transparent. I suppose it's because something paints the background.
   - Normally the operation object is Game View. If the view is docked with other views, the object is the whole window.
+
 
 ## License
 
@@ -88,6 +105,7 @@ However, there is no operation guarantee.
 
 ## Change log
 
+* 2020/08/09 Fix DwmApi. Rename transparent type enum
 * 2020/06/07 Support Unity 2019. Add layered winodow method
 * 2019/01/23 Add file open dialog. Return the way to acquire self window to be active window standard
 * 2018/12/28 Add namespace, Modify the way to acquire self window to be PID standard
@@ -161,6 +179,20 @@ files にはドロップされたファイルのパスが入ります。
   - （むしろ別のウィンドウもタイトルやクラス名で指定して操作できます。）
 - 閉じるボタンがなくなったり、ウィンドウを見失った場合、タスクマネージャから終了する必要が出るかも知れません。
 
+
+## 透明化方式について
+- Alpha
+  - 半透明が有効です。
+  - マウスでなく、タッチで操作するとアクティブかどうかの判別が難しく、不自然に感じる場合があります。
+  - 内部的には DWM (Desktop Window Manager) APIを使用します。
+- ColorKey
+  - 指定した一色のみが透明として扱います。
+  - タッチでも自然な操作となります。
+  - WindowController.keyColor で色を指定できます。
+    - デフォルトは 0x010001 です。
+  - 内部的には Layered Window を使用します。
+
+
 ## FAQ
 - エディタ上で透明にすると表示がおかしいのですが。
 	- すみません。仕様です。透明化はビルドしたものでご確認ください。
@@ -184,6 +216,7 @@ UniWinApi は、CC0（パブリックドメイン）としています。
 
 ## 更新履歴
 
+* 2020/08/09 DwmApiの不具合を修正。透過モードの名前変更。
 * 2020/06/07 Unity 2019 対応。Layered Window による透過モードを追加。
 * 2019/01/23 ファイルオープンダイアログ追加。自ウィンドウ取得方法をアクティブウィンドウ基準に戻した。
 * 2018/12/28 namespaceを設定、自ウィンドウ取得をPIDを基準とする方法に修正
