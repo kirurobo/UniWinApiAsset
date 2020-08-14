@@ -37,6 +37,27 @@ namespace Kirurobo
     public class WindowController : MonoBehaviour
     {
         /// <summary>
+        /// Hit testing methods
+        /// </summary>
+        public enum HitTestType
+        {
+            /// <summary>
+            /// No hit testing.
+            /// </summary>
+            None = 0,
+            
+            /// <summary>
+            /// See a pixel under the cursor. Comfortable but slow.
+            /// </summary>
+            Opacity = 1,
+            
+            /// <summary>
+            /// Only objects that target the raycast will be hit
+            /// </summary>
+            Raycast = 2,
+        }
+    
+        /// <summary>
         /// Window controller
         /// </summary>
         public UniWinApi uniWin;
@@ -124,6 +145,11 @@ namespace Kirurobo
         /// </summary>
         [FormerlySerializedAs("transparentMethod")] public UniWinApi.TransparentTypes transparentType = UniWinApi.TransparentTypes.Alpha;
 
+        /// <summary>
+        /// Hit testing method
+        /// </summary>
+        public HitTestType hitTestType = HitTestType.Opacity;
+        
         // カメラの背景をアルファゼロの黒に置き換えるため、本来の背景を保存しておく変数
         private CameraClearFlags originalCameraClearFlags;
         private Color originalCameraBackground;
@@ -492,7 +518,15 @@ namespace Kirurobo
             while (Application.isPlaying)
             {
                 yield return new WaitForEndOfFrame();
-                UpdateOnOpaquePixel();
+                
+                if (hitTestType == HitTestType.Opacity)
+                {
+                    UpdateOnOpaquePixel();
+                }
+                else if (hitTestType == HitTestType.Raycast)
+                {
+                    UpdateOnOpaquePixelByRaycast();
+                }
             }
             yield return null;
         }
@@ -532,6 +566,20 @@ namespace Kirurobo
                 onOpaquePixel = true;
                 //activeFingerId = -1;    // タッチ追跡は解除
                 return;
+            }
+            else
+            {
+                onOpaquePixel = false;
+            }
+        }
+
+        private void UpdateOnOpaquePixelByRaycast()
+        {
+            Ray ray = currentCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit, 100.0f))
+            {
+                onOpaquePixel = true;
             }
             else
             {
