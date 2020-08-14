@@ -287,6 +287,9 @@ namespace Kirurobo
         {
             if (!IsActive) return;
 
+            // 最小化状態ならば、次に表示されるときに描画が発生するものと仮定して、何もしない
+            if (IsMinimized) return;
+            
             // 今のサイズを記憶
             Vector2 size = GetSize();
             
@@ -563,6 +566,14 @@ namespace Kirurobo
         {
             if (!IsActive) return;
 
+            bool maximized = IsMaximized;
+
+            // 最大化状態ならば、一度通常ウィンドウに戻してから透過・枠有無を変更する
+            if (maximized)
+            {
+                Restore();
+            }
+
             if (enable)
             {
                 // 現在のウィンドウ情報を記憶
@@ -601,13 +612,23 @@ namespace Kirurobo
                 EnableClickThrough(false);
             }
 
+            // 戻す方法を決めるため、透明化が変更された時のタイプを記録しておく
             _currentTransparentType = TransparentType;
 
-            // ウィンドウ枠の分サイズが変わった際、Unityにリサイズイベントを発生させないとサイズがずれる
-            ResetSize();
-
-            // ウィンドウ再描画
-            WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
+            // 呼ぶ前に最大化状態だったならば、再度最大化
+            if (maximized)
+            {
+                // ウィンドウ再描画は最大化時に行われる
+                Maximize();
+            }
+            else
+            {
+                // ウィンドウ枠の分サイズが変わった際、Unityにリサイズイベントを発生させないとサイズがずれる
+                ResetSize();
+                
+                // ウィンドウ再描画
+                WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
+            }
         }
 
         private void EnableTransparentByDWM()
