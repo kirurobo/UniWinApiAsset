@@ -10,6 +10,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
+using UnityEngine.EventSystems;
 #if UNITY_EDITOR
 using UnityEditor;
 using System.Reflection;
@@ -154,11 +155,13 @@ namespace Kirurobo
         private CameraClearFlags originalCameraClearFlags;
         private Color originalCameraBackground;
 
+        [Header("Status")]
+
         /// <summary>
         /// Is the mouse pointer on an opaque pixel
         /// </summary>
-        //[SerializeField, Tooltip("Is the mouse pointer on an opaque pixel? (Read only)")]
-        private bool onOpaquePixel = true;
+        [SerializeField, ReadOnly, Tooltip("Is the mouse pointer on an opaque pixel or an object? (Read only)")]
+        private bool onObject = true;
 
         /// <summary>
         /// The cut off threshold of alpha value.
@@ -396,10 +399,14 @@ namespace Kirurobo
             // マウスによるドラッグ開始の判定
             if (Input.GetMouseButtonDown(0) && !Input.GetMouseButton(1) && !Input.GetMouseButton(2))
             {
-                dragStartedPosition = Input.mousePosition;
-                isDragging = true;
-                wasUsingMouse = true;
-                //Debug.Log("Start mouse dragging");
+                // EventSystemで反応した場合、UI上としてドラッグ対象外
+                if (!EventSystem.current.IsPointerOverGameObject())
+                {
+                    dragStartedPosition = Input.mousePosition;
+                    isDragging = true;
+                    wasUsingMouse = true;
+                    //Debug.Log("Start mouse dragging");
+                }
             }
 
             bool touching = (activeFingerId >= 0);
@@ -489,7 +496,7 @@ namespace Kirurobo
         void UpdateClickThrough()
         {
             // マウスカーソル非表示状態ならば透明画素上と同扱い
-            bool opaque = (onOpaquePixel && !UniWinApi.GetCursorVisible());
+            bool opaque = (onObject && !UniWinApi.GetCursorVisible());
 
             if (_isClickThrough)
             {
@@ -521,11 +528,16 @@ namespace Kirurobo
                 
                 if (hitTestType == HitTestType.Opacity)
                 {
-                    UpdateOnOpaquePixel();
+                    HitTestByOpaquePixel();
                 }
                 else if (hitTestType == HitTestType.Raycast)
                 {
-                    UpdateOnOpaquePixelByRaycast();
+                    HitTestByRaycast();
+                }
+                else
+                {
+                    // ヒットテスト無しの場合は常にtrue
+                    onObject = true;
                 }
             }
             yield return null;
@@ -535,7 +547,7 @@ namespace Kirurobo
         /// マウス下の画素があるかどうかを確認
         /// </summary>
         /// <param name="cam"></param>
-        private void UpdateOnOpaquePixel()
+        private void HitTestByOpaquePixel()
         {
             Vector2 mousePos;
 　          mousePos = Input.mousePosition;
@@ -553,7 +565,7 @@ namespace Kirurobo
 
                 if (GetOnOpaquePixel(pos))
                 {
-                    onOpaquePixel = true;
+                    onObject = true;
                     activeFingerId = touch.fingerId;
                     return;
                 }
@@ -563,27 +575,13 @@ namespace Kirurobo
             if (GetOnOpaquePixel(mousePos))
             {
                 //Debug.Log("Mouse " + mousePos);
-                onOpaquePixel = true;
+                onObject = true;
                 //activeFingerId = -1;    // タッチ追跡は解除
                 return;
             }
             else
             {
-                onOpaquePixel = false;
-            }
-        }
-
-        private void UpdateOnOpaquePixelByRaycast()
-        {
-            Ray ray = currentCamera.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-            if (Physics.Raycast(ray, out hit, 100.0f))
-            {
-                onOpaquePixel = true;
-            }
-            else
-            {
-                onOpaquePixel = false;
+                onObject = false;
             }
         }
 
@@ -631,6 +629,30 @@ namespace Kirurobo
             }
         }
 
+        /// <summary>
+        /// マウス下にオブジェクトがあるかどうかを確認
+        /// </summary>
+        private void HitTestByRaycast()
+        {
+            // uGUIの上と判定されれば、終了
+            if (EventSystem.current.IsPointerOverGameObject())
+            {
+                onObject = true;
+                return;
+            }
+
+            // Raycastで判定
+            Ray ray = currentCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit, 100.0f))
+            {
+                onObject = true;
+            }
+            else
+            {
+                onObject = false;
+            }
+        }
 
         /// <summary>
         /// 自分のウィンドウハンドルを見つける
