@@ -1,5 +1,10 @@
 # UniWinApi
 
+> ***See also my new repository [UniWindowController](https://github.com/kirurobo/uniwindowcontroller).
+It works on both Mac and Windows.***  
+---
+
+
 **UniWinApi** is a Windows API utility with a window controller class for Unity. This allows several window controls that Unity originally does not provide as followings.
 
 * Move window
@@ -118,6 +123,11 @@ However, there is no operation guarantee.
 ---
 
 # UniWinApi (日本語説明)
+
+> ***新リポジトリ [UniWindowController](https://github.com/kirurobo/uniwindowcontroller) もご覧ください。
+こちらは Mac でも Windows でも動作します。***  
+---
+
 
 **UniWinApi** は Unityでは本来行えない操作を Windows API 経由で行うものです。  
 自ウィンドウに対しての処理を行うためのコントローラーが付属します。  
