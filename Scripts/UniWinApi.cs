@@ -1080,13 +1080,10 @@ namespace Kirurobo
 
             WinApi.CHANGEFILTERSTRUCT changeFilterStruct = new WinApi.CHANGEFILTERSTRUCT(WinApi.MSGFLTINFO_NONE);
 
-            bool res;
-            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
-            Debug.Log(changeFilterStruct + " Result: " + res);
-            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
-            Debug.Log(changeFilterStruct + " Result: " + res);
-            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
-            Debug.Log(changeFilterStruct + " Result: " + res);
+            bool result;
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
         }
 
         /// <summary>
@@ -1096,13 +1093,10 @@ namespace Kirurobo
         {
             WinApi.CHANGEFILTERSTRUCT changeFilterStruct = new WinApi.CHANGEFILTERSTRUCT(WinApi.MSGFLTINFO_NONE);
 
-            bool res;
-            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
-            Debug.Log(changeFilterStruct + " Result: " + res);
-            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
-            Debug.Log(changeFilterStruct + " Result: " + res);
-            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
-            Debug.Log(changeFilterStruct + " Result: " + res);
+            bool result;
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
         }
 
         /// <summary>

@@ -136,19 +136,11 @@ namespace Kirurobo
         private bool _enableFileDrop = false;
 
         /// <summary>
-        /// When file drop is enabled, accept dropping from windows with lower previleges.
+        /// Modify the User Interface Privilege Isolation (UIPI) message filter when starting to enable file drop.
+        /// This option allows file dragging from lower privilege windows if your app runs with administrator privilege.
         /// </summary>
-        public bool enableFileDropFromLowerPrivilege
-        {
-            get { return _enableFileDropFromLowerPrivilege; }
-            set
-            {
-                if (value) { AllowFileDropFromLowerPrivilege(); }
-                else { DisallowFileDropFromLowerPrivilege(); }
-            }
-        }
-        [SerializeField, BoolProperty, Tooltip("When file drop is enabled, accept dropping from windows with lower previleges.")]
-        private bool _enableFileDropFromLowerPrivilege = false;
+        [System.NonSerialized]
+        public bool allowDropFromLowerPrivilege = false;
 
         /// <summary>
         /// The window will move by mouse dragging, if true.
@@ -908,7 +900,8 @@ namespace Kirurobo
             if (uniWin != null)
             {
                 uniWin.BeginFileDrop();
-                if (_enableFileDropFromLowerPrivilege)
+
+                if (allowDropFromLowerPrivilege)
                 {
                     AllowFileDropFromLowerPrivilege();
                 }
@@ -924,12 +917,6 @@ namespace Kirurobo
             if (uniWin != null)
             {
                 uniWin.EndFileDrop();
-
-                // Reset file drop from the lower privileges window, if it was allowed.
-                if (_enableFileDropFromLowerPrivilege)
-                {
-                    DisallowFileDropFromLowerPrivilege();
-                }
             }
             _enableFileDrop = false;
         }
@@ -943,7 +930,6 @@ namespace Kirurobo
             {
                 uniWin.AllowFileDraggingFromProgramsWithLowerPrivileges();
             }
-            _enableFileDropFromLowerPrivilege = true;
         }
 
         /// <summary>
@@ -955,7 +941,6 @@ namespace Kirurobo
             {
                 uniWin.DisallowFileDraggingFromProgramsWithLowerPrivileges();
             }
-            _enableFileDropFromLowerPrivilege = false;
         }
 
         /// <summary>

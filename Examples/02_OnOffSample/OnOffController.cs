@@ -36,6 +36,9 @@ namespace Kirurobo
             // 同じゲームオブジェクトに WindowController がアタッチされているとして、取得
             windowController = GetComponent<WindowController>();
 
+            //// Allow file drop from lower privilege windows.
+            //windowController.allowDropFromLowerPrivilege = true;
+
             // ファイルドロップ時の処理
             windowController.OnFilesDropped += (string[] files) =>
             {
