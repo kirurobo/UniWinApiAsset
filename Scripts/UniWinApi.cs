@@ -803,7 +803,7 @@ namespace Kirurobo
             return file;
         }
 
-#region マウス操作関連
+#region Mouse cursor
         /// <summary>
         /// マウスカーソルを指定座標へ移動させる
         /// </summary>
@@ -884,7 +884,7 @@ namespace Kirurobo
         }
 #endregion
 
-#region キー操作関連
+#region Key event
         /// <summary>
         /// キーコードを送ります
         /// </summary>
@@ -894,7 +894,7 @@ namespace Kirurobo
         }
 #endregion
 
-#region ファイルドロップ関連
+#region Drag and Drop
         /// <summary>
         /// ファイルドロップ時に発生するイベント
         /// </summary>
@@ -1066,6 +1066,23 @@ namespace Kirurobo
             }
 
             hWnd = IntPtr.Zero;
+        }
+
+        /// <summary>
+        /// Windows doesn't allow file dragging from non elevated programs to elevated ones. This function should fix it
+        /// For example: Running this program as admin from a non admin Windows user will not work without this function (explorer.exe will not be elevated)
+        /// </summary>
+        private void AllowFileDraggingFromProgramsWithLowerPrivileges()
+        {
+            //WinApi.ChangeWindowMessageFilter(WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW);
+            //WinApi.ChangeWindowMessageFilter(WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW);
+            //WinApi.ChangeWindowMessageFilter(WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_ALLOW);
+
+            WinApi.CHANGEFILTERSTRUCT changeFilterStruct = new WinApi.CHANGEFILTERSTRUCT(WinApi.MSGFLTINFO_NONE);
+
+            WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
         }
 
         /// <summary>
