@@ -36,6 +36,9 @@ namespace Kirurobo
             // 同じゲームオブジェクトに WindowController がアタッチされているとして、取得
             windowController = GetComponent<WindowController>();
 
+            //// Allow file drop from lower privilege windows.
+            //windowController.allowDropFromLowerPrivilege = true;
+
             // ファイルドロップ時の処理
             windowController.OnFilesDropped += (string[] files) =>
             {
@@ -117,7 +120,7 @@ namespace Kirurobo
         private void Update()
         {
             // Quit or stop playing when pressed [ESC]
-            if (Input.GetKey(KeyCode.Escape))
+            if (Input.GetKeyDown(KeyCode.Escape))
             {
 #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;

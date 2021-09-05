@@ -287,6 +287,9 @@ namespace Kirurobo
         {
             if (!IsActive) return;
 
+            // 最小化状態ならば、次に表示されるときに描画が発生するものと仮定して、何もしない
+            if (IsMinimized) return;
+            
             // 今のサイズを記憶
             Vector2 size = GetSize();
             
@@ -563,6 +566,14 @@ namespace Kirurobo
         {
             if (!IsActive) return;
 
+            bool maximized = IsMaximized;
+
+            // 最大化状態ならば、一度通常ウィンドウに戻してから透過・枠有無を変更する
+            if (maximized)
+            {
+                Restore();
+            }
+
             if (enable)
             {
                 // 現在のウィンドウ情報を記憶
@@ -601,13 +612,23 @@ namespace Kirurobo
                 EnableClickThrough(false);
             }
 
+            // 戻す方法を決めるため、透明化が変更された時のタイプを記録しておく
             _currentTransparentType = TransparentType;
 
-            // ウィンドウ枠の分サイズが変わった際、Unityにリサイズイベントを発生させないとサイズがずれる
-            ResetSize();
-
-            // ウィンドウ再描画
-            WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
+            // 呼ぶ前に最大化状態だったならば、再度最大化
+            if (maximized)
+            {
+                // ウィンドウ再描画は最大化時に行われる
+                Maximize();
+            }
+            else
+            {
+                // ウィンドウ枠の分サイズが変わった際、Unityにリサイズイベントを発生させないとサイズがずれる
+                ResetSize();
+                
+                // ウィンドウ再描画
+                WinApi.ShowWindow(hWnd, WinApi.SW_SHOW);
+            }
         }
 
         private void EnableTransparentByDWM()
@@ -782,7 +803,7 @@ namespace Kirurobo
             return file;
         }
 
-#region マウス操作関連
+#region Mouse cursor
         /// <summary>
         /// マウスカーソルを指定座標へ移動させる
         /// </summary>
@@ -863,7 +884,7 @@ namespace Kirurobo
         }
 #endregion
 
-#region キー操作関連
+#region Key event
         /// <summary>
         /// キーコードを送ります
         /// </summary>
@@ -873,7 +894,7 @@ namespace Kirurobo
         }
 #endregion
 
-#region ファイルドロップ関連
+#region Drag and Drop
         /// <summary>
         /// ファイルドロップ時に発生するイベント
         /// </summary>
@@ -1045,6 +1066,37 @@ namespace Kirurobo
             }
 
             hWnd = IntPtr.Zero;
+        }
+
+        /// <summary>
+        /// Windows doesn't allow file dragging from non elevated programs to elevated ones. This function should fix it
+        /// For example: Running this program as admin from a non admin Windows user will not work without this function (explorer.exe will not be elevated)
+        /// </summary>
+        public void AllowFileDraggingFromProgramsWithLowerPrivileges()
+        {
+            //WinApi.ChangeWindowMessageFilter(WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW);
+            //WinApi.ChangeWindowMessageFilter(WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW);
+            //WinApi.ChangeWindowMessageFilter(WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_ALLOW);
+
+            WinApi.CHANGEFILTERSTRUCT changeFilterStruct = new WinApi.CHANGEFILTERSTRUCT(WinApi.MSGFLTINFO_NONE);
+
+            bool result;
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+        }
+
+        /// <summary>
+        /// Disallow the User Interface Privilege Isolation message filters
+        /// </summary>
+        public void DisallowFileDraggingFromProgramsWithLowerPrivileges()
+        {
+            WinApi.CHANGEFILTERSTRUCT changeFilterStruct = new WinApi.CHANGEFILTERSTRUCT(WinApi.MSGFLTINFO_NONE);
+
+            bool result;
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
+            result = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
         }
 
         /// <summary>

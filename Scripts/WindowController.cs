@@ -10,6 +10,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
+using UnityEngine.EventSystems;
 #if UNITY_EDITOR
 using UnityEditor;
 using System.Reflection;
@@ -36,6 +37,27 @@ namespace Kirurobo
     /// </summary>
     public class WindowController : MonoBehaviour
     {
+        /// <summary>
+        /// Hit testing methods
+        /// </summary>
+        public enum HitTestType
+        {
+            /// <summary>
+            /// No hit testing.
+            /// </summary>
+            None = 0,
+            
+            /// <summary>
+            /// See a pixel under the cursor. Comfortable but slow.
+            /// </summary>
+            Opacity = 1,
+            
+            /// <summary>
+            /// Only objects that target the raycast will be hit
+            /// </summary>
+            Raycast = 2,
+        }
+    
         /// <summary>
         /// Window controller
         /// </summary>
@@ -99,7 +121,7 @@ namespace Kirurobo
         private bool isInitiallyMinimized;
         
         /// <summary>
-        /// ファイルドロップを有効にするならば最初からtrueにしておく
+        /// Enable file drop
         /// </summary>
         public bool enableFileDrop
         {
@@ -114,25 +136,39 @@ namespace Kirurobo
         private bool _enableFileDrop = false;
 
         /// <summary>
-        /// マウスドラッグでウィンドウを移動させるか
+        /// Modify the User Interface Privilege Isolation (UIPI) message filter when starting to enable file drop.
+        /// This option allows file dragging from lower privilege windows if your app runs with administrator privilege.
+        /// </summary>
+        [System.NonSerialized]
+        public bool allowDropFromLowerPrivilege = false;
+
+        /// <summary>
+        /// The window will move by mouse dragging, if true.
         /// </summary>
         [Tooltip("Make the window draggable while a left mouse button is pressed")]
         public bool enableDragMove = true;
 
         /// <summary>
-        /// 透過方式の指定
+        /// Method of transparency, alpha or color-key
         /// </summary>
         [FormerlySerializedAs("transparentMethod")] public UniWinApi.TransparentTypes transparentType = UniWinApi.TransparentTypes.Alpha;
 
+        /// <summary>
+        /// Hit testing method
+        /// </summary>
+        public HitTestType hitTestType = HitTestType.Opacity;
+        
         // カメラの背景をアルファゼロの黒に置き換えるため、本来の背景を保存しておく変数
         private CameraClearFlags originalCameraClearFlags;
         private Color originalCameraBackground;
 
+        [Header("Status")]
+
         /// <summary>
         /// Is the mouse pointer on an opaque pixel
         /// </summary>
-        //[SerializeField, Tooltip("Is the mouse pointer on an opaque pixel? (Read only)")]
-        private bool onOpaquePixel = true;
+        [SerializeField, ReadOnly, Tooltip("Is the mouse pointer on an opaque pixel or an object? (Read only)")]
+        private bool onObject = true;
 
         /// <summary>
         /// The cut off threshold of alpha value.
@@ -155,7 +191,7 @@ namespace Kirurobo
         public Color pickedColor;
 
         /// <summary>
-        /// 現在ドラッグ処理中ならばtrue
+        /// Is the window is dragged?
         /// </summary>
         private bool isDragging = false;
 
@@ -370,10 +406,14 @@ namespace Kirurobo
             // マウスによるドラッグ開始の判定
             if (Input.GetMouseButtonDown(0) && !Input.GetMouseButton(1) && !Input.GetMouseButton(2))
             {
-                dragStartedPosition = Input.mousePosition;
-                isDragging = true;
-                wasUsingMouse = true;
-                //Debug.Log("Start mouse dragging");
+                // EventSystemで反応した場合、UI上としてドラッグ対象外
+                if (!EventSystem.current.IsPointerOverGameObject())
+                {
+                    dragStartedPosition = Input.mousePosition;
+                    isDragging = true;
+                    wasUsingMouse = true;
+                    //Debug.Log("Start mouse dragging");
+                }
             }
 
             bool touching = (activeFingerId >= 0);
@@ -463,7 +503,7 @@ namespace Kirurobo
         void UpdateClickThrough()
         {
             // マウスカーソル非表示状態ならば透明画素上と同扱い
-            bool opaque = (onOpaquePixel && !UniWinApi.GetCursorVisible());
+            bool opaque = (onObject && !UniWinApi.GetCursorVisible());
 
             if (_isClickThrough)
             {
@@ -492,7 +532,20 @@ namespace Kirurobo
             while (Application.isPlaying)
             {
                 yield return new WaitForEndOfFrame();
-                UpdateOnOpaquePixel();
+                
+                if (hitTestType == HitTestType.Opacity)
+                {
+                    HitTestByOpaquePixel();
+                }
+                else if (hitTestType == HitTestType.Raycast)
+                {
+                    HitTestByRaycast();
+                }
+                else
+                {
+                    // ヒットテスト無しの場合は常にtrue
+                    onObject = true;
+                }
             }
             yield return null;
         }
@@ -501,7 +554,7 @@ namespace Kirurobo
         /// マウス下の画素があるかどうかを確認
         /// </summary>
         /// <param name="cam"></param>
-        private void UpdateOnOpaquePixel()
+        private void HitTestByOpaquePixel()
         {
             Vector2 mousePos;
 　          mousePos = Input.mousePosition;
@@ -519,7 +572,7 @@ namespace Kirurobo
 
                 if (GetOnOpaquePixel(pos))
                 {
-                    onOpaquePixel = true;
+                    onObject = true;
                     activeFingerId = touch.fingerId;
                     return;
                 }
@@ -529,13 +582,13 @@ namespace Kirurobo
             if (GetOnOpaquePixel(mousePos))
             {
                 //Debug.Log("Mouse " + mousePos);
-                onOpaquePixel = true;
+                onObject = true;
                 //activeFingerId = -1;    // タッチ追跡は解除
                 return;
             }
             else
             {
-                onOpaquePixel = false;
+                onObject = false;
             }
         }
 
@@ -583,6 +636,30 @@ namespace Kirurobo
             }
         }
 
+        /// <summary>
+        /// マウス下にオブジェクトがあるかどうかを確認
+        /// </summary>
+        private void HitTestByRaycast()
+        {
+            // uGUIの上と判定されれば、終了
+            if (EventSystem.current.IsPointerOverGameObject())
+            {
+                onObject = true;
+                return;
+            }
+
+            // Raycastで判定
+            Ray ray = currentCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit, 100.0f))
+            {
+                onObject = true;
+            }
+            else
+            {
+                onObject = false;
+            }
+        }
 
         /// <summary>
         /// 自分のウィンドウハンドルを見つける
@@ -823,6 +900,11 @@ namespace Kirurobo
             if (uniWin != null)
             {
                 uniWin.BeginFileDrop();
+
+                if (allowDropFromLowerPrivilege)
+                {
+                    AllowFileDropFromLowerPrivilege();
+                }
             }
             _enableFileDrop = true;
         }
@@ -839,6 +921,27 @@ namespace Kirurobo
             _enableFileDrop = false;
         }
 
+        /// <summary>
+        /// Modifies the privilege filter to allow file drop from lower privilege window
+        /// </summary>
+        public void AllowFileDropFromLowerPrivilege()
+        {
+            if (uniWin != null)
+            {
+                uniWin.AllowFileDraggingFromProgramsWithLowerPrivileges();
+            }
+        }
+
+        /// <summary>
+        /// Disallow the privilege filter
+        /// </summary>
+        public void DisallowFileDropFromLowerPrivilege()
+        {
+            if (uniWin != null)
+            {
+                uniWin.DisallowFileDraggingFromProgramsWithLowerPrivileges();
+            }
+        }
 
         /// <summary>
         /// Show open file dialog.
