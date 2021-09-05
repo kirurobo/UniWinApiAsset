@@ -117,7 +117,7 @@ namespace Kirurobo
         private void Update()
         {
             // Quit or stop playing when pressed [ESC]
-            if (Input.GetKey(KeyCode.Escape))
+            if (Input.GetKeyDown(KeyCode.Escape))
             {
 #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;

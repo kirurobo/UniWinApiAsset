@@ -121,7 +121,7 @@ namespace Kirurobo
         private bool isInitiallyMinimized;
         
         /// <summary>
-        /// ファイルドロップを有効にするならば最初からtrueにしておく
+        /// Enable file drop
         /// </summary>
         public bool enableFileDrop
         {
@@ -136,13 +136,28 @@ namespace Kirurobo
         private bool _enableFileDrop = false;
 
         /// <summary>
-        /// マウスドラッグでウィンドウを移動させるか
+        /// When file drop is enabled, accept dropping from windows with lower previleges.
+        /// </summary>
+        public bool enableFileDropFromLowerPrivilege
+        {
+            get { return _enableFileDropFromLowerPrivilege; }
+            set
+            {
+                if (value) { AllowFileDropFromLowerPrivilege(); }
+                else { DisallowFileDropFromLowerPrivilege(); }
+            }
+        }
+        [SerializeField, BoolProperty, Tooltip("When file drop is enabled, accept dropping from windows with lower previleges.")]
+        private bool _enableFileDropFromLowerPrivilege = false;
+
+        /// <summary>
+        /// The window will move by mouse dragging, if true.
         /// </summary>
         [Tooltip("Make the window draggable while a left mouse button is pressed")]
         public bool enableDragMove = true;
 
         /// <summary>
-        /// 透過方式の指定
+        /// Method of transparency, alpha or color-key
         /// </summary>
         [FormerlySerializedAs("transparentMethod")] public UniWinApi.TransparentTypes transparentType = UniWinApi.TransparentTypes.Alpha;
 
@@ -184,7 +199,7 @@ namespace Kirurobo
         public Color pickedColor;
 
         /// <summary>
-        /// 現在ドラッグ処理中ならばtrue
+        /// Is the window is dragged?
         /// </summary>
         private bool isDragging = false;
 
@@ -893,6 +908,10 @@ namespace Kirurobo
             if (uniWin != null)
             {
                 uniWin.BeginFileDrop();
+                if (_enableFileDropFromLowerPrivilege)
+                {
+                    AllowFileDropFromLowerPrivilege();
+                }
             }
             _enableFileDrop = true;
         }
@@ -905,10 +924,39 @@ namespace Kirurobo
             if (uniWin != null)
             {
                 uniWin.EndFileDrop();
+
+                // Reset file drop from the lower privileges window, if it was allowed.
+                if (_enableFileDropFromLowerPrivilege)
+                {
+                    DisallowFileDropFromLowerPrivilege();
+                }
             }
             _enableFileDrop = false;
         }
 
+        /// <summary>
+        /// Modifies the privilege filter to allow file drop from lower privilege window
+        /// </summary>
+        public void AllowFileDropFromLowerPrivilege()
+        {
+            if (uniWin != null)
+            {
+                uniWin.AllowFileDraggingFromProgramsWithLowerPrivileges();
+            }
+            _enableFileDropFromLowerPrivilege = true;
+        }
+
+        /// <summary>
+        /// Disallow the privilege filter
+        /// </summary>
+        public void DisallowFileDropFromLowerPrivilege()
+        {
+            if (uniWin != null)
+            {
+                uniWin.DisallowFileDraggingFromProgramsWithLowerPrivileges();
+            }
+            _enableFileDropFromLowerPrivilege = false;
+        }
 
         /// <summary>
         /// Show open file dialog.

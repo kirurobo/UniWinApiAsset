@@ -1072,7 +1072,7 @@ namespace Kirurobo
         /// Windows doesn't allow file dragging from non elevated programs to elevated ones. This function should fix it
         /// For example: Running this program as admin from a non admin Windows user will not work without this function (explorer.exe will not be elevated)
         /// </summary>
-        private void AllowFileDraggingFromProgramsWithLowerPrivileges()
+        public void AllowFileDraggingFromProgramsWithLowerPrivileges()
         {
             //WinApi.ChangeWindowMessageFilter(WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW);
             //WinApi.ChangeWindowMessageFilter(WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW);
@@ -1080,9 +1080,29 @@ namespace Kirurobo
 
             WinApi.CHANGEFILTERSTRUCT changeFilterStruct = new WinApi.CHANGEFILTERSTRUCT(WinApi.MSGFLTINFO_NONE);
 
-            WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
-            WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
-            WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            bool res;
+            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            Debug.Log(changeFilterStruct + " Result: " + res);
+            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            Debug.Log(changeFilterStruct + " Result: " + res);
+            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_ALLOW, out changeFilterStruct);
+            Debug.Log(changeFilterStruct + " Result: " + res);
+        }
+
+        /// <summary>
+        /// Disallow the User Interface Privilege Isolation message filters
+        /// </summary>
+        public void DisallowFileDraggingFromProgramsWithLowerPrivileges()
+        {
+            WinApi.CHANGEFILTERSTRUCT changeFilterStruct = new WinApi.CHANGEFILTERSTRUCT(WinApi.MSGFLTINFO_NONE);
+
+            bool res;
+            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_DROPFILES, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
+            Debug.Log(changeFilterStruct + " Result: " + res);
+            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYDATA, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
+            Debug.Log(changeFilterStruct + " Result: " + res);
+            res = WinApi.ChangeWindowMessageFilterEx(hWnd, WinApi.WM_COPYGLOBALDATA, WinApi.MSGFLT_DISALLOW, out changeFilterStruct);
+            Debug.Log(changeFilterStruct + " Result: " + res);
         }
 
         /// <summary>
