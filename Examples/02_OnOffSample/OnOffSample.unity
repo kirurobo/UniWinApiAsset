@@ -3077,11 +3077,6 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5359781937870936129, guid: 1a68be57637a61842b1d8ea2ccb106b5,
         type: 3}
-      propertyPath: _isTransparent
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 5359781937870936129, guid: 1a68be57637a61842b1d8ea2ccb106b5,
-        type: 3}
       propertyPath: hitTestType
       value: 2
       objectReference: {fileID: 0}

@@ -136,13 +136,6 @@ namespace Kirurobo
         private bool _enableFileDrop = false;
 
         /// <summary>
-        /// Modify the User Interface Privilege Isolation (UIPI) message filter when starting to enable file drop.
-        /// This option allows file dragging from lower privilege windows if your app runs with administrator privilege.
-        /// </summary>
-        [System.NonSerialized]
-        public bool allowDropFromLowerPrivilege = false;
-
-        /// <summary>
         /// The window will move by mouse dragging, if true.
         /// </summary>
         [Tooltip("Make the window draggable while a left mouse button is pressed")]
@@ -161,6 +154,15 @@ namespace Kirurobo
         // カメラの背景をアルファゼロの黒に置き換えるため、本来の背景を保存しておく変数
         private CameraClearFlags originalCameraClearFlags;
         private Color originalCameraBackground;
+
+        [Header("Advanced setting")]
+
+        /// <summary>
+        /// Modify the User Interface Privilege Isolation (UIPI) message filter when starting to enable file drop.
+        /// This option allows file dragging from lower privilege windows if your app runs with administrator privilege.
+        /// </summary>
+        [Tooltip("This option must be set before enable file drop")]
+        public bool allowDropFromLowerPrivilege = false;
 
         [Header("Status")]
 

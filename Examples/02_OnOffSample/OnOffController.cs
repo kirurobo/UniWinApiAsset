@@ -50,7 +50,9 @@ namespace Kirurobo
             };
 
             // ウィンドウ状態が変化した際にはUIも一致するよう更新
-            windowController.OnStateChanged += () => { UpdateUI(); };
+            windowController.OnStateChanged += () => {
+                UpdateUI();
+            };
 
             // Toggleのチェック状態を、現在の状態に合わせる
             UpdateUI();
