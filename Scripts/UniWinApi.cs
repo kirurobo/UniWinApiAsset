@@ -43,6 +43,7 @@ namespace Kirurobo
             {
                 hWnd = hwnd;
                 if (hWnd == IntPtr.Zero) return;
+                //Debug.Log("HWND:" + hWnd);
 
                 // StringBufferの大きさ
                 const int len = 1024;
@@ -63,11 +64,11 @@ namespace Kirurobo
                 }
                 //Debug.Log("TITLE:" + Title);
 
-
                 // プロセスIDを取得
-                long pid;
+                ulong pid = 0;
                 WinApi.GetWindowThreadProcessId(hWnd, out pid);     // IL2CPP かつ x86 だとクラッシュ？
                 ProcessId = (int)pid;
+                //Debug.Log("THREAD PID: " + ProcessId);
 
 #if ENABLE_IL2CPP
                 // プロセス名を取得
@@ -77,7 +78,7 @@ namespace Kirurobo
                 ProcessName = "";
 #else
                 // プロセス名を取得
-                // GetProcessNyId(PID) で指定PIDが存在しない例外になる場合があるため try {} を使用
+                // GetProcessById(PID) で指定PIDが存在しない例外になる場合があるため try {} を使用
                 try
                 {
                     System.Diagnostics.Process p = System.Diagnostics.Process.GetProcessById(ProcessId);
@@ -166,22 +167,22 @@ namespace Kirurobo
         /// <summary>
         /// 元のウィンドウスタイル
         /// </summary>
-        private long OriginalWindowStyle;
+        private ulong OriginalWindowStyle;
 
         /// <summary>
         /// Original extended window style
         /// </summary>
-        private long OriginalWindowExStyle;
+        private ulong OriginalWindowExStyle;
 
 
         /// <summary>
         /// 現在のウィンドウスタイル
         /// </summary>
-        private long CurrentWindowStyle;
+        private ulong CurrentWindowStyle;
         /// <summary>
         /// Current extended window style
         /// </summary>
-        private long CurrentWindowExStyle;
+        private ulong CurrentWindowExStyle;
 
 
         /// <summary>
@@ -410,6 +411,8 @@ namespace Kirurobo
             int pid = process.Id;
             //Debug.Log("PID: " + pid);
 
+            IntPtr hwnd;
+
 #if UNITY_EDITOR
             // Gameビューを取得
             // 参考： https://qiita.com/MARQUE/items/292c9080a686d95af1a5
@@ -418,7 +421,7 @@ namespace Kirurobo
             // Gameビューににフォーカスを与えてから、アクティブなウィンドウを取得
             gameViewWin.Focus();
             //System.Threading.Thread.Sleep(100);
-            IntPtr hwnd = WinApi.GetActiveWindow();
+            hwnd = WinApi.GetActiveWindow();
 
             var rootHwnd = hwnd;
             rootHwnd = WinApi.GetAncestor(hwnd, WinApi.GA_ROOT);
@@ -427,8 +430,6 @@ namespace Kirurobo
 
             // 一応PIDをチェックし、自分一致したらそのウィンドウを使うことにして終了
             if (gameWindow.ProcessId == pid) return gameWindow;
-#else
-            IntPtr hwnd;
 #endif
 
             // アクティブウィンドウを取得する方法
@@ -485,7 +486,7 @@ namespace Kirurobo
         }
 
         [MonoPInvokeCallback(typeof(WinApi.EnumWindowsDelegate))]
-        private static bool EnumCallback(IntPtr hWnd, long lParam)
+        private static bool EnumCallback(IntPtr hWnd, ulong lParam)
         {
             hWndList.Add(hWnd);
             return true;
@@ -542,8 +543,8 @@ namespace Kirurobo
         public void Update()
         {
             if (!IsActive) return;
-            long style = WinApi.GetWindowLong(hWnd, WinApi.GWL_STYLE);
-            long exstyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_EXSTYLE);
+            ulong style = WinApi.GetWindowLong(hWnd, WinApi.GWL_STYLE);
+            ulong exstyle = WinApi.GetWindowLong(hWnd, WinApi.GWL_EXSTYLE);
             if (!WinApi.IsIconic(hWnd) && !WinApi.IsZoomed(hWnd))
             {
                 if (style != this.CurrentWindowStyle)
@@ -653,7 +654,7 @@ namespace Kirurobo
 #if UNITY_EDITOR
             // エディタの場合、設定すると描画が更新されなくなってしまう
 #else
-            long exstyle = this.CurrentWindowExStyle;
+            ulong exstyle = this.CurrentWindowExStyle;
             exstyle |= WinApi.WS_EX_LAYERED;
             this.CurrentWindowExStyle = exstyle;
             WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
@@ -675,7 +676,7 @@ namespace Kirurobo
             WinApi.COLORREF cref = new WinApi.COLORREF(0, 0, 0);
             WinApi.SetLayeredWindowAttributes(hWnd, cref, 0xFF, WinApi.LWA_ALPHA);
 
-            long exstyle = this.CurrentWindowExStyle;
+            ulong exstyle = this.CurrentWindowExStyle;
             exstyle &= ~WinApi.WS_EX_LAYERED;
             this.CurrentWindowExStyle = exstyle;
             WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
@@ -697,8 +698,8 @@ namespace Kirurobo
         // エディタでなければ枠無しに設定
         if (enable) {
             // 枠無しウィンドウにする
-            //long val = WinApi.GetWindowLong (hWnd, WinApi.GWL_STYLE) & ~WinApi.WS_OVERLAPPEDWINDOW;
-            long val = WinApi.WS_VISIBLE | WinApi.WS_POPUP;
+            //ulong val = WinApi.GetWindowLong (hWnd, WinApi.GWL_STYLE) & ~WinApi.WS_OVERLAPPEDWINDOW;
+            ulong val = WinApi.WS_VISIBLE | WinApi.WS_POPUP;
             //this.CurrentWindowStyle = this.OriginalWindowStyle & ~WinApi.WS_OVERLAPPEDWINDOW;
             this.CurrentWindowStyle = val;
             WinApi.SetWindowLong (hWnd, WinApi.GWL_STYLE, this.CurrentWindowStyle);
@@ -725,7 +726,7 @@ namespace Kirurobo
             // エディタの場合は操作の透過はやめておく
             //if (isClickThrough)
             //{
-            //    long exstyle = this.CurrentWindowExStyle;
+            //    ulong exstyle = this.CurrentWindowExStyle;
             //    exstyle |= WinApi.WS_EX_TRANSPARENT;
             //    //exstyle |= WinApi.WS_EX_LAYERED;
             //    this.CurrentWindowExStyle = exstyle;
@@ -741,7 +742,7 @@ namespace Kirurobo
             // エディタでなければ操作を透過
             if (isClickThrough)
             {
-                long exstyle = this.CurrentWindowExStyle;
+                ulong exstyle = this.CurrentWindowExStyle;
                 exstyle |= WinApi.WS_EX_TRANSPARENT;
                 exstyle |= WinApi.WS_EX_LAYERED;
                 this.CurrentWindowExStyle = exstyle;
@@ -890,7 +891,7 @@ namespace Kirurobo
         /// </summary>
         public void SendKey(KeyCode code)
         {
-            WinApi.PostMessage(this.hWnd, WinApi.WM_IME_CHAR, (long)code, IntPtr.Zero);
+            WinApi.PostMessage(this.hWnd, WinApi.WM_IME_CHAR, (ulong)code, IntPtr.Zero);
         }
 #endregion
 
@@ -980,7 +981,7 @@ namespace Kirurobo
             BeginHook();
 
             // ドロップを受け付ける状態にする
-            long exstyle = this.CurrentWindowExStyle;
+            ulong exstyle = this.CurrentWindowExStyle;
             exstyle |= WinApi.WS_EX_ACCEPTFILES;
             this.CurrentWindowExStyle = exstyle;
             WinApi.SetWindowLong(hWnd, WinApi.GWL_EXSTYLE, this.CurrentWindowExStyle);
@@ -997,7 +998,7 @@ namespace Kirurobo
             if (!IsActive) return;
 
             // ドロップを受け付ける状態を元に戻す
-            long exstyle = this.CurrentWindowExStyle;
+            ulong exstyle = this.CurrentWindowExStyle;
             exstyle &= ~WinApi.WS_EX_ACCEPTFILES;
             exstyle |= (WinApi.WS_EX_ACCEPTFILES & this.OriginalWindowExStyle); // 元からドロップ許可ならやはり受付
             this.CurrentWindowExStyle = exstyle;
