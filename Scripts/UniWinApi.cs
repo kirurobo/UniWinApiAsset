@@ -486,7 +486,7 @@ namespace Kirurobo
         }
 
         [MonoPInvokeCallback(typeof(WinApi.EnumWindowsDelegate))]
-        private static bool EnumCallback(IntPtr hWnd, ulong lParam)
+        private static bool EnumCallback(IntPtr hWnd, IntPtr lParam)
         {
             hWndList.Add(hWnd);
             return true;
