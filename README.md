@@ -110,6 +110,7 @@ However, there is no operation guarantee.
 
 ## Change log
 
+* 2021/09/27 Added a setting to accept file drop even when running as administrator
 * 2020/08/09 Fix DwmApi. Rename transparent type enum
 * 2020/06/07 Support Unity 2019. Add layered winodow method
 * 2019/01/23 Add file open dialog. Return the way to acquire self window to be active window standard
@@ -226,6 +227,7 @@ UniWinApi は、CC0（パブリックドメイン）としています。
 
 ## 更新履歴
 
+* 2021/09/27 管理者として実行時にもドロップを受け付ける設定を追加
 * 2020/08/09 DwmApiの不具合を修正。透過モードの名前変更。
 * 2020/06/07 Unity 2019 対応。Layered Window による透過モードを追加。
 * 2019/01/23 ファイルオープンダイアログ追加。自ウィンドウ取得方法をアクティブウィンドウ基準に戻した。
