@@ -155,7 +155,7 @@ namespace Kirurobo
         private CameraClearFlags originalCameraClearFlags;
         private Color originalCameraBackground;
 
-        [Header("Advanced setting")]
+        [Header("Advanced settings")]
 
         /// <summary>
         /// Modify the User Interface Privilege Isolation (UIPI) message filter when starting to enable file drop.
