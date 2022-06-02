@@ -481,7 +481,7 @@ namespace Kirurobo
             IntPtr hwnd = WinApi.FindWindow(classname, null);
             if (hwnd == IntPtr.Zero) return null;
 
-            WindowHandle window = new WindowHandle();
+            WindowHandle window = new WindowHandle(hwnd);
             return window;
         }
 
