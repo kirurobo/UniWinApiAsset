@@ -23,14 +23,14 @@ This asset is designed to provide functions which enable your Unity application 
 
 ## Confirmed environment
 
-* Unity 2018.4.20f1, Unity 2019.2.18f
-* Windows 10 Pro x64
-* GeForce GTX980, GeForce GTX 1070
+* Unity 2020.3.43
+* Windows 11 Pro x64
+* GeForce GTX 1070
 
 |Scripting backend|x86_64|x86|
 |:----------------|:----:|:-:|
 |Mono             |  x   | x |
-|IL2CPP           |  x   |   |
+|IL2CPP           |  x   | x  |
 
 ## Usage
 
@@ -110,6 +110,7 @@ However, there is no operation guarantee.
 
 ## Change log
 
+* 2023/04/17 Ver.0.7.0 Fixed CallingConvention and supporting 32bit IL2CPP
 * 2022/06/02 Ver.0.6.1 Fixed FindWindowClass() did not return a window
 * 2021/09/27 Ver.0.6.0 Added a setting to accept file drop even when running as administrator
 * 2020/08/09 Ver.0.5.0 Fix DwmApi. Rename transparent type enum
@@ -150,14 +151,14 @@ However, there is no operation guarantee.
 
 ## 確認済み動作環境
 
-* Unity 2018.4.20f1, Unity 2019.2.18f
-* Windows 10 Pro x64
-* GeForce GTX980, GeForce GTX 1070
+* Unity 2020.3.43
+* Windows 11 Pro x64
+* GeForce GTX 1070
 
 |Scripting backend|x86_64|x86|
 |:----------------|:----:|:-:|
 |Mono             |  ○   | ○ |
-|IL2CPP           |  ○   |   |
+|IL2CPP           |  ○   | ○ |
 
 ## 利用方法
 
@@ -228,6 +229,7 @@ UniWinApi は、CC0（パブリックドメイン）としています。
 
 ## 更新履歴
 
+* 2023/04/17 Ver.0.7.0 CallingConvention修正、32ビットIL2CPP対応。
 * 2022/06/02 Ver.0.6.1 FindWindowClassがウィンドウを返さなかった点を修正
 * 2021/09/27 Ver.0.6.0 管理者として実行時にもドロップを受け付ける設定を追加
 * 2020/08/09 Ver.0.5.0 DwmApiの不具合を修正。透過モードの名前変更。
