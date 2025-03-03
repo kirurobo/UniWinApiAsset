@@ -345,6 +345,18 @@ namespace Kirurobo
         }
 
         /// <summary>
+        /// Get the client size of the window.
+        /// </summary>
+        /// <returns>The size.</returns>
+        public Vector2 GetClientSize()
+        {
+            if (!IsActive) return Vector2.zero;
+            WinApi.RECT rect = new WinApi.RECT();
+            WinApi.GetClientRect(hWnd, out rect);
+            return new Vector2(rect.right - rect.left, rect.bottom - rect.top);
+        }
+
+        /// <summary>
         /// Get the window position.
         /// </summary>
         /// <returns>The position.</returns>
